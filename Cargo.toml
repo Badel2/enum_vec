@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "enum-like",
+    "enum-like-derive",
+    "example",
+    "enum-vec",
+]
