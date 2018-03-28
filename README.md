@@ -24,18 +24,30 @@ equal or better than a normal `Vec`. However it's equal when n >= 11, so if
 you have a type with 2048 variants, you should consider using a `Vec` instead.
 ```
 >>> [(n, n/8 if n <= 8 else n/16 if n <= 16 else n/32, 1-(32 % n)/32) for n in range(1, 32)]
-[   (1, 0.125, 1.0),
-    (2, 0.25, 1.0),
-    (3, 0.375, 0.9375),
-    (4, 0.5, 1.0),
-    (5, 0.625, 0.9375),
-    (6, 0.75, 0.9375),
-    (7, 0.875, 0.875),
-    (8, 1.0, 1.0),
-    (9, 0.5625, 0.84375),
-    (10, 0.625, 0.9375)]
 ```
 
+n | Vec | EnumVec
+--- | --- | ---
+1| 0.125| 1.0|
+2| 0.25| 1.0|
+3| 0.375| 0.9375|
+4| 0.5| 1.0|
+5| 0.625| 0.9375|
+6| 0.75| 0.9375|
+7| 0.875| 0.875|
+8| 1.0| 1.0|
+9| 0.5625| 0.84375|
+10| 0.625| 0.9375|
+
+# Usage
+Right now the easiest way to try this crate is to clone the entire repository
+and add this to your `Cargo.toml`:
+```
+[dependencies]
+enum_vec = { path = "/path/to/enum_vec/enum_vec" }
+enum_like = { path = "/path/to/enum_vec/enum_like" }
+enum_like_derive = { path = "/path/to/enum_vec/enum_like_derive" }
+```
 
 # Example
 
@@ -99,7 +111,7 @@ if you want to store a 4-bit digit just impl EnumLike for it:
 
 # impl EnumLike
 
-```
+```rust
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 struct Digit {
     x: u8, // x >= 0 && x <= 9
@@ -127,3 +139,16 @@ Use get and set instead.
 chunk and window iterators, sort(), dedup(), etc. Because there is no deref
 impl (unlike `&Vec` which can be used as a `&[T]`).
 * Missing impls for element tuples and arrays.
+
+# See also
+
+[enum-set](https://github.com/contain-rs/enum-set)
+
+[enum-map](https://github.com/xfix/enum-map)
+
+[enum-kinds](https://bitbucket.org/Soft/enum-kinds)
+
+[bit-vec](https://github.com/contain-rs/bit-vec)
+
+[smallbitvec](https://github.com/servo/smallbitvec)
+
