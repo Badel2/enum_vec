@@ -1,7 +1,7 @@
 # enum-vec
 Efficiently store a vector of enum variants
 
-[![Build Status](https://travis-ci.org/badel2/enum-vec.svg?branch=master)](https://travis-ci.org/badel2/enum-vec)
+[![Build Status](https://travis-ci.org/Badel2/enum-vec.svg?branch=master)](https://travis-ci.org/Badel2/enum-vec)
 
 Let's say you have an enum `Direction` with 4 variants. You only need 2 bits to
 store the discriminant, but Rust will use the minimum of 1 byte (8 bits).
