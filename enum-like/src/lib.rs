@@ -256,14 +256,14 @@ unsafe impl<A: EnumLike, B: EnumLike, C: EnumLike> EnumLike for (A, B, C) {
 
 // TODO: array impls with macro
 // we can just transform [T; 2] into (T, T)
-// [T; 0] can share impl with ! type
+// and [T; 0] into ()
 unsafe impl<T: EnumLike> EnumLike for [T; 0] {
-    const NUM_VARIANTS: usize = 0;
+    const NUM_VARIANTS: usize = <()>::NUM_VARIANTS;
     fn to_discr(self) -> usize {
-        unreachable!();
+        0
     }
     fn from_discr(_x: usize) -> Self {
-        unreachable!();
+        []
     }
 }
 unsafe impl<T: EnumLike> EnumLike for [T; 1] {
@@ -593,9 +593,17 @@ mod tests {
 
     #[test]
     fn check_array_impls() {
+        check_values_of::<[bool; 0]>(1);
+        check_values_of::<[bool; 1]>(2);
+        check_values_of::<[bool; 2]>(4);
+        check_values_of::<[bool; 3]>(8);
+        //check_values_of::<[bool; 4]>(16);
+
         let mut a = <[bool; 0]>::values();
+        assert_eq!(a.next().unwrap(), []);
         assert_eq!(a.next(), None);
 
+        // Here we care about the order: 0, 1
         let mut a = <[bool; 1]>::values();
         assert_eq!(a.next().unwrap(), [false]);
         assert_eq!(a.next().unwrap(), [true]);
@@ -616,6 +624,34 @@ mod tests {
 
         // Write helper function to convert from u8 to [bool; N]
         // and use that to test everything
+        fn as_bool_vec(mut x: u8, n: usize) -> Vec<bool> {
+            let mut v = vec![];
+            while x != 0 {
+                v.push((x & 1) == 1);
+                x = x >> 1;
+            }
+
+            while v.len() < n {
+                v.push(false);
+            }
+
+            v
+        }
+
+        macro_rules! test_array_impl_n {
+            ( $( $n:expr ),* ) => {
+                $(
+                let mut a = <[bool; $n]>::values();
+                for i in 0..(1 << $n) {
+                    assert_eq!(a.next().unwrap(), *as_bool_vec(i, $n));
+                }
+                assert_eq!(a.next(), None);
+                )*
+            };
+        }
+
+        test_array_impl_n!(0, 1, 2, 3);
+
     }
 
     #[test]
