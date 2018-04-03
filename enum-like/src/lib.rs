@@ -269,46 +269,64 @@ unsafe impl<A: EnumLike, B: EnumLike, C: EnumLike, D: EnumLike> EnumLike for (A,
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
-    ($(
-        $Tuple:ident {
+    (   $Tuple:ident {
             ($last_idx:tt) -> $last_T:ident
             $(($idx:tt) -> $T:ident)+
         }
-    )+) => {
-        $(
+    ) => {
 unsafe impl<$($T: EnumLike,)+ $last_T: EnumLike> EnumLike for ($($T,)+ $last_T) {
     const NUM_VARIANTS: usize = <(($($T,)+), $last_T)>::NUM_VARIANTS;
     fn to_discr(self) -> usize {
         (($(self.$idx,)+), self.$last_idx).to_discr()
     }
     fn from_discr(x: usize) -> Self {
-        let a = <(($($T,)+), $last_T)>::from_discr(x);
+        //let a = <(($($T,)+), $last_T)>::from_discr(x);
+        let a = <(reverse!([$($T)+]), $last_T)>::from_discr(x);
         ($((a.0).$idx,)+ a.1)
     }
 }
-        )+
     }
 }
 
-tuple_impls! {
-    Tuple3 {
-        (2) -> C
-        (0) -> A
-        (1) -> B
-    }
-    Tuple4 {
-        (3) -> D
-        (0) -> A
-        (1) -> B
-        (2) -> C
-    }
-    Tuple5 {
-        (4) -> E
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-    }
+macro_rules! reverse {
+    ([] $($reversed:ident)*) => {
+        ($($reversed),*)  // base case
+    };
+    ([$first:ident $($rest:ident)*] $($reversed:ident)*) => {
+        reverse!([$($rest)*] $first $($reversed)*)  // recursion
+    };
+}
+
+macro_rules! recursive_tuple_impls {
+    {
+        ($idx0:tt) -> $T0:ident
+        ($idx1:tt) -> $T1:ident
+    } => {
+        // Done, impls for (A, B) are hardcoded
+    };
+    {
+        ($last_idx:tt) -> $last_T:ident
+        $(($idx:tt) -> $T:ident)+
+    } => {
+        tuple_impls! {
+            TupleX {
+                ($last_idx) -> $last_T
+                $(($idx) -> $T)+
+            }
+        }
+
+        recursive_tuple_impls! {
+            $(($idx) -> $T)+
+        }
+    };
+}
+
+recursive_tuple_impls! {
+    (4) -> E
+    (3) -> D
+    (2) -> C
+    (1) -> B
+    (0) -> A
 }
 /*
     Tuple6 {
@@ -438,7 +456,7 @@ unsafe impl<T: EnumLike> EnumLike for [T; 3] {
     }
     fn from_discr(x: usize) -> Self {
         let t = <(T, T, T)>::from_discr(x);
-        [t.0, t.1, t.2]
+        [t.1, t.0, t.2]
     }
 }
 
