@@ -243,6 +243,7 @@ unsafe impl<T: EnumLike, S: EnumLike> EnumLike for (T, S) {
 // (A, B, C) == ((A, B), C)
 // generic implementation needs
 // https://github.com/rust-lang/rfcs/pull/1935
+/*
 unsafe impl<A: EnumLike, B: EnumLike, C: EnumLike> EnumLike for (A, B, C) {
     const NUM_VARIANTS: usize = <((A, B), C)>::NUM_VARIANTS;
     fn to_discr(self) -> usize {
@@ -253,6 +254,142 @@ unsafe impl<A: EnumLike, B: EnumLike, C: EnumLike> EnumLike for (A, B, C) {
         ((a.0).0, (a.0).1, a.1)
     }
 }
+
+unsafe impl<A: EnumLike, B: EnumLike, C: EnumLike, D: EnumLike> EnumLike for (A, B, C, D) {
+    const NUM_VARIANTS: usize = <((A, B, C), D)>::NUM_VARIANTS;
+    fn to_discr(self) -> usize {
+        ((self.0, self.1, self.2), self.3).to_discr()
+    }
+    fn from_discr(x: usize) -> Self {
+        let a = <((A, B, C), D)>::from_discr(x);
+        ((a.0).0, (a.0).1, (a.0).2, a.1)
+    }
+}
+*/
+
+// macro for implementing n-ary tuple functions and operations
+macro_rules! tuple_impls {
+    ($(
+        $Tuple:ident {
+            ($last_idx:tt) -> $last_T:ident
+            $(($idx:tt) -> $T:ident)+
+        }
+    )+) => {
+        $(
+unsafe impl<$($T: EnumLike,)+ $last_T: EnumLike> EnumLike for ($($T,)+ $last_T) {
+    const NUM_VARIANTS: usize = <(($($T,)+), $last_T)>::NUM_VARIANTS;
+    fn to_discr(self) -> usize {
+        (($(self.$idx,)+), self.$last_idx).to_discr()
+    }
+    fn from_discr(x: usize) -> Self {
+        let a = <(($($T,)+), $last_T)>::from_discr(x);
+        ($((a.0).$idx,)+ a.1)
+    }
+}
+        )+
+    }
+}
+
+tuple_impls! {
+    Tuple3 {
+        (2) -> C
+        (0) -> A
+        (1) -> B
+    }
+    Tuple4 {
+        (3) -> D
+        (0) -> A
+        (1) -> B
+        (2) -> C
+    }
+    Tuple5 {
+        (4) -> E
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+    }
+}
+/*
+    Tuple6 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+    }
+    Tuple7 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+    }
+    Tuple8 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+    }
+    Tuple9 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+    }
+    Tuple10 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+    }
+    Tuple11 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+        (10) -> K
+    }
+    Tuple12 {
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+        (10) -> K
+        (11) -> L
+    }
+}
+*/
 
 // TODO: array impls with macro
 // we can just transform [T; 2] into (T, T)
@@ -593,37 +730,8 @@ mod tests {
 
     #[test]
     fn check_array_impls() {
-        check_values_of::<[bool; 0]>(1);
-        check_values_of::<[bool; 1]>(2);
-        check_values_of::<[bool; 2]>(4);
-        check_values_of::<[bool; 3]>(8);
-        //check_values_of::<[bool; 4]>(16);
-
-        let mut a = <[bool; 0]>::values();
-        assert_eq!(a.next().unwrap(), []);
-        assert_eq!(a.next(), None);
-
-        // Here we care about the order: 0, 1
-        let mut a = <[bool; 1]>::values();
-        assert_eq!(a.next().unwrap(), [false]);
-        assert_eq!(a.next().unwrap(), [true]);
-        assert_eq!(a.next(), None);
-
-        let mut a = <[bool; 2]>::values();
-        assert_eq!(a.next().unwrap(), [false, false]);
-        assert_eq!(a.next().unwrap(), [true, false]);
-        assert_eq!(a.next().unwrap(), [false, true]);
-        assert_eq!(a.next().unwrap(), [true, true]);
-        assert_eq!(a.next(), None);
-
-        let mut a = <[bool; 3]>::values();
-        assert_eq!(a.next().unwrap(), [false, false, false]);
-        assert_eq!(a.next().unwrap(), [true, false, false]);
-        assert_eq!(a.next().unwrap(), [false, true, false]);
-        assert_eq!(a.next().unwrap(), [true, true, false]);
-
-        // Write helper function to convert from u8 to [bool; N]
-        // and use that to test everything
+        // Helper function to convert from u8 to [bool; N]
+        // used to test everything
         fn as_bool_vec(mut x: u8, n: usize) -> Vec<bool> {
             let mut v = vec![];
             while x != 0 {
@@ -641,11 +749,11 @@ mod tests {
         macro_rules! test_array_impl_n {
             ( $( $n:expr ),* ) => {
                 $(
-                let mut a = <[bool; $n]>::values();
-                for i in 0..(1 << $n) {
-                    assert_eq!(a.next().unwrap(), *as_bool_vec(i, $n));
-                }
-                assert_eq!(a.next(), None);
+                    let mut a = <[bool; $n]>::values();
+                    for i in 0..(1 << $n) {
+                        assert_eq!(a.next().unwrap(), *as_bool_vec(i, $n));
+                    }
+                    assert_eq!(a.next(), None);
                 )*
             };
         }
