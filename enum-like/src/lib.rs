@@ -175,22 +175,20 @@ unsafe impl EnumLike for bool {
     }
 }
 
-// This is different from the usual optimization, where Option<bool> is
+// This is equivalent to the builtin (rust) optimization, where Option<bool> is
 // 0: Some(false), 1: Some(true), 2: None
-// This implementation is:
-// 0: None, 1: Some(false), 2: Some(true)
 unsafe impl<T: EnumLike> EnumLike for Option<T> {
     const NUM_VARIANTS: usize = 1 + T::NUM_VARIANTS;
     fn to_discr(self) -> usize {
         match self {
-            None => 0,
-            Some(x) => 1 + x.to_discr(),
+            None => T::NUM_VARIANTS,
+            Some(x) => x.to_discr(),
         }
     }
     fn from_discr(x: usize) -> Self {
         match x {
-            0 => None,
-            x => Some(T::from_discr(x - 1)),
+            x if x == T::NUM_VARIANTS => None,
+            x => Some(T::from_discr(x)),
         }
     }
 }
@@ -221,6 +219,8 @@ unsafe impl<T: EnumLike> EnumLike for (T,) {
     }
 }
 
+// This is the base product type impl, all other product types are
+// implemented on top of it
 unsafe impl<T: EnumLike, S: EnumLike> EnumLike for (T, S) {
     const NUM_VARIANTS: usize = T::NUM_VARIANTS * S::NUM_VARIANTS;
     fn to_discr(self) -> usize {
@@ -737,7 +737,7 @@ mod tests {
 
         test_array_impl_n!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
-        // Assume everything works fine from 13 to 31, only check the first
+        // Assume everything works fine from 13 to 32, only check the first
         // and last 10 elements
         macro_rules! test_array_impl_n_short {
             ( $( $n:expr ),* ) => {
@@ -798,11 +798,11 @@ mod tests {
 
         // The ordering is important, if it changes remember to update the doc
         // example
-        assert_eq!(a.next().unwrap(), None);
-        assert_eq!(a.next().unwrap(), Some(None));
-        assert_eq!(a.next().unwrap(), Some(Some(None)));
         assert_eq!(a.next().unwrap(), Some(Some(Some(false))));
         assert_eq!(a.next().unwrap(), Some(Some(Some(true))));
+        assert_eq!(a.next().unwrap(), Some(Some(None)));
+        assert_eq!(a.next().unwrap(), Some(None));
+        assert_eq!(a.next().unwrap(), None);
         assert_eq!(a.next(), None);
     }
 
@@ -814,11 +814,11 @@ mod tests {
         check_values_of::<Abomination>(8);
         assert_eq!(
             Abomination::values().nth(1).unwrap(),
-            Ok(Ok(Some(())))
+            Ok(Ok(None))
         );
         assert_eq!(
             Abomination::values().last().unwrap(),
-            Err(Err(Some(true)))
+            Err(Err(None))
         );
     }
 }
