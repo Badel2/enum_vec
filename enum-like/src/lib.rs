@@ -277,22 +277,32 @@ macro_rules! tuple_impls {
 unsafe impl<$($T: EnumLike,)+ $last_T: EnumLike> EnumLike for ($($T,)+ $last_T) {
     const NUM_VARIANTS: usize = <(($($T,)+), $last_T)>::NUM_VARIANTS;
     fn to_discr(self) -> usize {
-        (($(self.$idx,)+), self.$last_idx).to_discr()
+        (reverse_idx_b!(self [$($idx)+]), self.$last_idx).to_discr()
     }
     fn from_discr(x: usize) -> Self {
-        let a = <(reverse!([$($T)+]), $last_T)>::from_discr(x);
-        ($((a.0).$idx,)+ a.1)
+        //let a = <(reverse!([$($T)+]), $last_T)>::from_discr(x);
+        let a = <(($($T,)+), $last_T)>::from_discr(x);
+        //((a.0).0, (a.0).1, a.1)
+        reverse_idx_a!(a [$($idx)+])
     }
 }
     }
 }
 
-macro_rules! reverse {
-    ([] $($reversed:ident)*) => {
-        ($($reversed),*)  // base case
+macro_rules! reverse_idx_b {
+    ($a:ident [] $($reversed:tt)*) => {
+        ($($a.$reversed,)+)  // base case
     };
-    ([$first:ident $($rest:ident)*] $($reversed:ident)*) => {
-        reverse!([$($rest)*] $first $($reversed)*)  // recursion
+    ($a:ident [$first:tt $($rest:tt)*] $($reversed:tt)*) => {
+        reverse_idx_b!($a [$($rest)*] $first $($reversed)*)  // recursion
+    };
+}
+macro_rules! reverse_idx_a {
+    ($a:ident [] $($reversed:tt)*) => {
+        ($(($a.0).$reversed,)+ $a.1)  // base case
+    };
+    ($a:ident [$first:tt $($rest:tt)*] $($reversed:tt)*) => {
+        reverse_idx_a!($a [$($rest)*] $first $($reversed)*)  // recursion
     };
 }
 
@@ -402,7 +412,7 @@ unsafe impl<T: EnumLike> EnumLike for [T; 3] {
     }
     fn from_discr(x: usize) -> Self {
         let t = <(T, T, T)>::from_discr(x);
-        [t.1, t.0, t.2]
+        [t.0, t.1, t.2]
     }
 }
 
@@ -724,6 +734,16 @@ mod tests {
 
         test_array_impl_n!(0, 1, 2, 3);
 
+    }
+
+    #[test]
+    fn check_tuple_impls() {
+        let a = <(bool, bool, bool, bool)>::values();
+        for i in a {
+            println!("{:?}", i);
+            println!("{:?}", i.to_discr());
+        }
+        //panic!("Done!");
     }
 
     #[test]
