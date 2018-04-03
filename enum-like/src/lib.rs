@@ -326,7 +326,6 @@ tuple_impls! {
     (0) -> A0
 }
 
-// TODO: array impls with macro
 // we can just transform [T; 2] into (T, T)
 // and [T; 0] into ()
 unsafe impl<T: EnumLike> EnumLike for [T; 0] {
@@ -338,43 +337,86 @@ unsafe impl<T: EnumLike> EnumLike for [T; 0] {
         []
     }
 }
-unsafe impl<T: EnumLike> EnumLike for [T; 1] {
-    const NUM_VARIANTS: usize = T::NUM_VARIANTS;
+
+// macro for implementing n-ary array from n-ary tuple
+macro_rules! array_impls {
+    {
+        ($idx0:tt) -> $T0:ident
+    } => {
+        // Done, impls for [T; 0] are hardcoded
+    };
+    {
+        ($N:tt) -> $T0:ident
+        $(($idx:tt) -> $T:ident)+
+    } => {
+unsafe impl<$T0: EnumLike> EnumLike for [$T0; $N] {
+    const NUM_VARIANTS: usize = <($($T,)+)>::NUM_VARIANTS;
     fn to_discr(mut self) -> usize {
         use std::mem;
-        let x0 = unsafe { mem::replace(&mut self[0], mem::uninitialized()) };
-        x0.to_discr()
+        unsafe {
+        (
+            $(
+                mem::replace(&mut self[$N - 1 - $idx], mem::uninitialized()),
+            )+
+        ).to_discr()
+        }
     }
     fn from_discr(x: usize) -> Self {
-        [T::from_discr(x)]
+        let t = <($($T,)+)>::from_discr(x);
+        reverse_idx_c!(t [$($idx)+] )
     }
 }
-unsafe impl<T: EnumLike> EnumLike for [T; 2] {
-    const NUM_VARIANTS: usize = <(T, T)>::NUM_VARIANTS;
-    fn to_discr(mut self) -> usize {
-        use std::mem;
-        let x0 = unsafe { mem::replace(&mut self[0], mem::uninitialized()) };
-        let x1 = unsafe { mem::replace(&mut self[1], mem::uninitialized()) };
-        (x0, x1).to_discr()
-    }
-    fn from_discr(x: usize) -> Self {
-        let t = <(T, T)>::from_discr(x);
-        [t.0, t.1]
-    }
+        // Recursion!
+        array_impls! {
+            $(($idx) -> $T)+
+        }
+
+    };
 }
-unsafe impl<T: EnumLike> EnumLike for [T; 3] {
-    const NUM_VARIANTS: usize = <(T, T, T)>::NUM_VARIANTS;
-    fn to_discr(mut self) -> usize {
-        use std::mem;
-        let x0 = unsafe { mem::replace(&mut self[0], mem::uninitialized()) };
-        let x1 = unsafe { mem::replace(&mut self[1], mem::uninitialized()) };
-        let x2 = unsafe { mem::replace(&mut self[2], mem::uninitialized()) };
-        (x0, x1, x2).to_discr()
-    }
-    fn from_discr(x: usize) -> Self {
-        let t = <(T, T, T)>::from_discr(x);
-        [t.0, t.1, t.2]
-    }
+
+macro_rules! reverse_idx_c {
+    ($a:ident [] $($reversed:tt)*) => {
+        [$($a.$reversed,)+]  // base case
+    };
+    ($a:ident [$first:tt $($rest:tt)*] $($reversed:tt)*) => {
+        reverse_idx_c!($a [$($rest)*] $first $($reversed)*)  // recursion
+    };
+}
+
+array_impls! {
+    (32) -> A
+    (31) -> A
+    (30) -> A
+    (29) -> A
+    (28) -> A
+    (27) -> A
+    (26) -> A
+    (25) -> A
+    (24) -> A
+    (23) -> A
+    (22) -> A
+    (21) -> A
+    (20) -> A
+    (19) -> A
+    (18) -> A
+    (17) -> A
+    (16) -> A
+    (15) -> A
+    (14) -> A
+    (13) -> A
+    (12) -> A
+    (11) -> A
+    (10) -> A
+    (9) -> A
+    (8) -> A
+    (7) -> A
+    (6) -> A
+    (5) -> A
+    (4) -> A
+    (3) -> A
+    (2) -> A
+    (1) -> A
+    (0) -> A
 }
 
 /// Helper trait to iterate over all the possible values of an enum.
@@ -665,9 +707,9 @@ mod tests {
 
     #[test]
     fn check_array_impls() {
-        // Helper function to convert from u8 to [bool; N]
+        // Helper function to convert from u32 to [bool; N]
         // used to test everything
-        fn as_bool_vec(mut x: u8, n: usize) -> Vec<bool> {
+        fn as_bool_vec(mut x: u32, n: usize) -> Vec<bool> {
             let mut v = vec![];
             while x != 0 {
                 v.push((x & 1) == 1);
@@ -693,14 +735,41 @@ mod tests {
             };
         }
 
-        test_array_impl_n!(0, 1, 2, 3);
+        test_array_impl_n!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+
+        // Assume everything works fine from 13 to 31, only check the first
+        // and last 10 elements
+        macro_rules! test_array_impl_n_short {
+            ( $( $n:expr ),* ) => {
+                $(
+                    let mut a = <[bool; $n]>::values();
+                    for i in 0..100 {
+                        assert_eq!(
+                            a.next().unwrap(),
+                            *as_bool_vec(i as u32, $n)
+                        );
+                    }
+
+                    let mut a = <[bool; $n]>::values().skip((1 << $n) - 10);
+                    for i in ((1 << $n) - 10)..(1u64 << $n) {
+                        assert_eq!(
+                            a.next().unwrap(),
+                            *as_bool_vec(i as u32, $n)
+                        );
+                    }
+                    assert_eq!(a.next(), None);
+                )*
+            };
+        }
+        test_array_impl_n_short!(13, 14, 15, 16, 17, 18, 19, 20, 21, 22);
+        test_array_impl_n_short!(23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
     }
 
     #[test]
     fn check_tuple_array_equivalency() {
         let mut a = <(bool, bool, bool, bool)>::values();
         let mut b = <[[bool; 2]; 2]>::values();
-        for _ in 0..(1<<4) {
+        for _ in 0..(1 << 4) {
             let va = a.next().unwrap();
             let vb = b.next().unwrap();
 
