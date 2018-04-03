@@ -1,7 +1,4 @@
 #![deny(missing_docs)]
-// TODO: abstract over bit blocks
-// or maybe abstract over vec? So we can use SmallVec...
-// If the enum has more than 128 variants, just use Vec<Enum>
 // Should we require T to be Clone?
 
 //! This crate provides the `EnumLike` trait, which defines a mapping from
@@ -214,7 +211,6 @@ unsafe impl<T: EnumLike, S: EnumLike> EnumLike for Result<T, S> {
     }
 }
 
-// TODO: macro for impl more tuple types?
 unsafe impl<T: EnumLike> EnumLike for (T,) {
     const NUM_VARIANTS: usize = T::NUM_VARIANTS;
     fn to_discr(self) -> usize {
@@ -243,70 +239,9 @@ unsafe impl<T: EnumLike, S: EnumLike> EnumLike for (T, S) {
 // (A, B, C) == ((A, B), C)
 // generic implementation needs
 // https://github.com/rust-lang/rfcs/pull/1935
-/*
-unsafe impl<A: EnumLike, B: EnumLike, C: EnumLike> EnumLike for (A, B, C) {
-    const NUM_VARIANTS: usize = <((A, B), C)>::NUM_VARIANTS;
-    fn to_discr(self) -> usize {
-        ((self.0, self.1), self.2).to_discr()
-    }
-    fn from_discr(x: usize) -> Self {
-        let a = <((A, B), C)>::from_discr(x);
-        ((a.0).0, (a.0).1, a.1)
-    }
-}
 
-unsafe impl<A: EnumLike, B: EnumLike, C: EnumLike, D: EnumLike> EnumLike for (A, B, C, D) {
-    const NUM_VARIANTS: usize = <((A, B, C), D)>::NUM_VARIANTS;
-    fn to_discr(self) -> usize {
-        ((self.0, self.1, self.2), self.3).to_discr()
-    }
-    fn from_discr(x: usize) -> Self {
-        let a = <((A, B, C), D)>::from_discr(x);
-        ((a.0).0, (a.0).1, (a.0).2, a.1)
-    }
-}
-*/
-
-// macro for implementing n-ary tuple functions and operations
+// macro for implementing n-ary tuple from (n-1)-ary tuple
 macro_rules! tuple_impls {
-    (   $Tuple:ident {
-            ($last_idx:tt) -> $last_T:ident
-            $(($idx:tt) -> $T:ident)+
-        }
-    ) => {
-unsafe impl<$($T: EnumLike,)+ $last_T: EnumLike> EnumLike for ($($T,)+ $last_T) {
-    const NUM_VARIANTS: usize = <(($($T,)+), $last_T)>::NUM_VARIANTS;
-    fn to_discr(self) -> usize {
-        (reverse_idx_b!(self [$($idx)+]), self.$last_idx).to_discr()
-    }
-    fn from_discr(x: usize) -> Self {
-        //let a = <(reverse!([$($T)+]), $last_T)>::from_discr(x);
-        let a = <(($($T,)+), $last_T)>::from_discr(x);
-        //((a.0).0, (a.0).1, a.1)
-        reverse_idx_a!(a [$($idx)+])
-    }
-}
-    }
-}
-
-macro_rules! reverse_idx_b {
-    ($a:ident [] $($reversed:tt)*) => {
-        ($($a.$reversed,)+)  // base case
-    };
-    ($a:ident [$first:tt $($rest:tt)*] $($reversed:tt)*) => {
-        reverse_idx_b!($a [$($rest)*] $first $($reversed)*)  // recursion
-    };
-}
-macro_rules! reverse_idx_a {
-    ($a:ident [] $($reversed:tt)*) => {
-        ($(($a.0).$reversed,)+ $a.1)  // base case
-    };
-    ($a:ident [$first:tt $($rest:tt)*] $($reversed:tt)*) => {
-        reverse_idx_a!($a [$($rest)*] $first $($reversed)*)  // recursion
-    };
-}
-
-macro_rules! recursive_tuple_impls {
     {
         ($idx0:tt) -> $T0:ident
         ($idx1:tt) -> $T1:ident
@@ -317,20 +252,46 @@ macro_rules! recursive_tuple_impls {
         ($last_idx:tt) -> $last_T:ident
         $(($idx:tt) -> $T:ident)+
     } => {
-        tuple_impls! {
-            TupleX {
-                ($last_idx) -> $last_T
-                $(($idx) -> $T)+
-            }
-        }
 
-        recursive_tuple_impls! {
+unsafe impl<$($T:EnumLike,)+ $last_T:EnumLike> EnumLike for ($($T,)+ $last_T) {
+    const NUM_VARIANTS: usize = <(($($T,)+), $last_T)>::NUM_VARIANTS;
+    fn to_discr(self) -> usize {
+        (reverse_idx_b!(self [$($idx)+]), self.$last_idx).to_discr()
+    }
+    fn from_discr(x: usize) -> Self {
+        let a = <(($($T,)+), $last_T)>::from_discr(x);
+        //((a.0).0, (a.0).1, a.1)
+        reverse_idx_a!(a [$($idx)+])
+    }
+}
+        // Recursion!
+        tuple_impls! {
             $(($idx) -> $T)+
         }
+
     };
 }
 
-recursive_tuple_impls! {
+// Reverse macro based on https://stackoverflow.com/a/42174800
+macro_rules! reverse_idx_b {
+    ($a:ident [] $($reversed:tt)*) => {
+        ($($a.$reversed,)+)  // base case
+    };
+    ($a:ident [$first:tt $($rest:tt)*] $($reversed:tt)*) => {
+        reverse_idx_b!($a [$($rest)*] $first $($reversed)*)  // recursion
+    };
+}
+
+macro_rules! reverse_idx_a {
+    ($a:ident [] $($reversed:tt)*) => {
+        ($(($a.0).$reversed,)+ $a.1)  // base case
+    };
+    ($a:ident [$first:tt $($rest:tt)*] $($reversed:tt)*) => {
+        reverse_idx_a!($a [$($rest)*] $first $($reversed)*)  // recursion
+    };
+}
+
+tuple_impls! {
     (31) -> A31
     (30) -> A30
     (29) -> A29
@@ -733,17 +694,24 @@ mod tests {
         }
 
         test_array_impl_n!(0, 1, 2, 3);
-
     }
 
     #[test]
-    fn check_tuple_impls() {
-        let a = <(bool, bool, bool, bool)>::values();
-        for i in a {
-            println!("{:?}", i);
-            println!("{:?}", i.to_discr());
+    fn check_tuple_array_equivalency() {
+        let mut a = <(bool, bool, bool, bool)>::values();
+        let mut b = <[[bool; 2]; 2]>::values();
+        for _ in 0..(1<<4) {
+            let va = a.next().unwrap();
+            let vb = b.next().unwrap();
+
+            assert_eq!(va.0, vb[0][0]);
+            assert_eq!(va.1, vb[0][1]);
+            assert_eq!(va.2, vb[1][0]);
+            assert_eq!(va.3, vb[1][1]);
         }
-        //panic!("Done!");
+
+        assert_eq!(a.next(), None);
+        assert_eq!(b.next(), None);
     }
 
     #[test]
