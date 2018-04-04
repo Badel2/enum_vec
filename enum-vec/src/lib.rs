@@ -321,6 +321,17 @@ impl<T: EnumLike> EnumVec<T> {
         (&mut self).into_iter()
     }
     */
+    pub fn for_each<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T),
+    {
+        let l = self.len();
+        for i in 0..l {
+            let mut x = self.get(i).unwrap();
+            f(&mut x);
+            self.set(i, x);
+        }
+    }
 }
 
 impl<T: EnumLike> Extend<T> for EnumVec<T> {
@@ -462,7 +473,6 @@ impl<'a, T: EnumLike> Iterator for EnumVecIter<'a, T> {
 
 //impl<T: EnumLike> ExactSizeIterator for EnumVecIter<T> {}
 
-/// Iterator over EnumVec
 // Maybe we can implement it as EnumVecIter?
 /*
 pub struct EnumVecIntoIter<T: EnumLike> {
@@ -470,6 +480,7 @@ pub struct EnumVecIntoIter<T: EnumLike> {
     v: EnumVec<T>,
 }
 */
+/// Iterator over EnumVec
 pub struct EnumVecIntoIter<T: EnumLike> {
     v: EnumVec<T>,
     idx: usize,

@@ -7,7 +7,10 @@ use enum_vec::EnumVec;
 
 #[derive(Debug, EnumLike)]
 enum Direction {
-    Left, Right, Up, Down,
+    Left,
+    Right,
+    Up,
+    Down,
 }
 
 fn main() {
@@ -17,6 +20,7 @@ fn main() {
     v.push(Direction::Left);
     v.push(Direction::Right);
 
+    // Iterators:
     for d in v.iter() {
         println!("{:?}", d);
     }
@@ -25,8 +29,14 @@ fn main() {
         // Same as above
     }
 
-    for _ in v {
+    // This is iter_mut()
+    v.for_each(|x| {
+        *x = Direction::Up;
+    });
+
+    for d in v {
         // Here we take self
+        println!("{:?}", d);
     }
 
     // Error: use of moved value v
