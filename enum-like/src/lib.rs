@@ -219,38 +219,20 @@ unsafe impl<T: EnumLike> EnumLike for (T,) {
     }
 }
 
-fn is_power_of_two(n: usize) -> bool {
-    (n & (n.wrapping_sub(1))) == 0
-}
-
 // This is the base product type impl, all other product types are
 // implemented on top of it
 unsafe impl<T: EnumLike, S: EnumLike> EnumLike for (T, S) {
     const NUM_VARIANTS: usize = T::NUM_VARIANTS * S::NUM_VARIANTS;
     fn to_discr(self) -> usize {
-        // TODO: this should be optimized away by the compiler, check that
-        if !is_power_of_two(T::NUM_VARIANTS) && is_power_of_two(S::NUM_VARIANTS)
-        {
-            self.1.to_discr() + self.0.to_discr() * S::NUM_VARIANTS
-        } else {
-            self.0.to_discr() + self.1.to_discr() * T::NUM_VARIANTS
-        }
+        self.0.to_discr() + self.1.to_discr() * T::NUM_VARIANTS
     }
     fn from_discr(x: usize) -> Self {
         //(T::from_discr(x % T::NUM_VARIANTS), S::from_discr(x / T::NUM_VARIANTS))
         // workarround for #45850
-        if !is_power_of_two(T::NUM_VARIANTS) && is_power_of_two(S::NUM_VARIANTS)
-        {
-            (
-                T::from_discr(x.wrapping_div(S::NUM_VARIANTS)),
-                S::from_discr(x.wrapping_rem(S::NUM_VARIANTS)),
-            )
-        } else {
-            (
-                T::from_discr(x.wrapping_rem(T::NUM_VARIANTS)),
-                S::from_discr(x.wrapping_div(T::NUM_VARIANTS)),
-            )
-        }
+        (
+            T::from_discr(x.wrapping_rem(T::NUM_VARIANTS)),
+            S::from_discr(x.wrapping_div(T::NUM_VARIANTS)),
+        )
     }
 }
 
@@ -501,11 +483,11 @@ array_impls! {
 ///
 /// Output:
 /// ```norun
-/// 0: Some(Some(Some(false)))
-/// 1: Some(Some(Some(true)))
+/// 0: None
+/// 1: Some(None)
 /// 2: Some(Some(None))
-/// 3: Some(None)
-/// 4: None
+/// 3: Some(Some(Some(false)))
+/// 4: Some(Some(Some(true)))
 /// ```
 ///
 /// The index can then be used to create an instance of the type using
@@ -799,23 +781,6 @@ mod tests {
 
         assert_eq!(a.next(), None);
         assert_eq!(b.next(), None);
-    }
-
-    #[test]
-    fn tuple_3_2() {
-        // There is a special case in (T, S) which makes these two types
-        // have the same representation
-        check_values_of::<(Option<bool>, bool)>(6);
-        check_values_of::<(bool, Option<bool>)>(6);
-        let mut a = <(Option<bool>, bool)>::values();
-        let mut b = <(bool, Option<bool>)>::values();
-
-        for _ in 0..6 {
-            let an = a.next().unwrap();
-            let bn = b.next().unwrap();
-            assert_eq!(an.0, bn.1);
-            assert_eq!(an.1, bn.0);
-        }
     }
 
     #[test]
