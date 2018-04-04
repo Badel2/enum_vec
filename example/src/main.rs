@@ -30,6 +30,7 @@ fn main() {
     for _ in &v {
         // Same as above
     }
+    println!("{:?}", v);
 
     // This is iter_mut()
     v.for_each(|x| {

@@ -10,6 +10,7 @@ pub use enum_like::*;
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::iter::FromIterator;
+use std::fmt;
 
 // Idea for SmallEnumVec: literally copy paste the code
 // s/Vec/SmallVec
@@ -18,7 +19,7 @@ use std::iter::FromIterator;
 // Tag: MSB of num_elements
 
 /// A vector which efficiently stores enum variants.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct EnumVec<T: EnumLike> {
     // The contents of the storage are undefined, even its length may not
     // match the expected self.len() / ELEMS_PER_BLOCK
@@ -90,7 +91,7 @@ impl<T: EnumLike> EnumVec<T> {
     const ELEMS_PER_BLOCK: usize = 32 / Self::BITS_PER_ELEM;
     const ELEMENT_MASK: u32 = (1 << Self::BITS_PER_ELEM) - 1;
     pub fn new() -> Self {
-        Self::with_capacity(0)
+        Default::default()
     }
     pub fn with_capacity(n: usize) -> Self {
         Self {
@@ -334,6 +335,28 @@ impl<T: EnumLike> EnumVec<T> {
             self.set(i, x);
         }
     }
+    pub fn to_vec(&self) -> Vec<T> {
+        let mut v = Vec::with_capacity(self.len());
+        v.extend(self.iter());
+
+        v
+    }
+}
+
+impl<T: EnumLike + fmt::Debug> fmt::Debug for EnumVec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<T: EnumLike> Default for EnumVec<T> {
+    fn default() -> Self {
+        Self {
+            storage: Vec::new(),
+            num_elements: 0,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<T: EnumLike> Extend<T> for EnumVec<T> {
@@ -529,24 +552,18 @@ impl<T: EnumLike> Rem<usize> for EnumVec<T> {
 }
 */
 
-// Other useful impls:
-impl<T: EnumLike> Default for EnumVec<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 // Warning: when implementing hash we must zero out the last block
 // of the storage, otherwise the garbage data will make the hash inconsistent.
 // Also, if we want to be generic over storage, we can't use the fast method
 // of hashing each block, we must hash each element individually...
+
+// Also, should we require T: Hash for impl Hash?
 
 // Useful alias?
 /// Alias for `EnumVec<bool>`
 pub type BitVec = EnumVec<bool>;
 // N-bit vec (currently unimplemented)
 // needs const generics
-// (and impl EnumLike for [bool; N])
 //pub type NBitVec<N> = EnumVec<[bool; N]>;
 
 #[cfg(test)]
