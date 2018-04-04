@@ -7,7 +7,10 @@ use enum_vec::EnumVec;
 
 #[derive(Debug, EnumLike)]
 enum Direction {
-    Left, Right, Up, Down,
+    Left,
+    Right,
+    Up,
+    Down,
 }
 
 fn main() {
