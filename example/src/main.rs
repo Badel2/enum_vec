@@ -17,9 +17,20 @@ fn main() {
     v.push(Direction::Left);
     v.push(Direction::Right);
 
-    for d in v {
+    for d in v.iter() {
         println!("{:?}", d);
     }
+
+    for _ in &v {
+        // Same as above
+    }
+
+    for _ in v {
+        // Here we take self
+    }
+
+    // Error: use of moved value v
+    //println!("{}", v.len());
 
     println!("All possible directions:");
     // All possible directions

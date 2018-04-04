@@ -313,6 +313,14 @@ impl<T: EnumLike> EnumVec<T> {
     fn blocks_for_elements(n: usize) -> usize {
         n.saturating_add(Self::ELEMS_PER_BLOCK - 1) / Self::ELEMS_PER_BLOCK
     }
+    pub fn iter<'a>(&'a self) -> EnumVecIter<'a, T> {
+        (&self).into_iter()
+    }
+    /*
+    pub fn iter_mut<'a>(&'a mut self) -> EnumVecIterMut<'a, T> {
+        (&mut self).into_iter()
+    }
+    */
 }
 
 impl<T: EnumLike> Extend<T> for EnumVec<T> {
@@ -345,6 +353,18 @@ impl<T: EnumLike> Into<Vec<T>> for EnumVec<T> {
 }
 */
 
+impl<'a, T: EnumLike> IntoIterator for &'a EnumVec<T> {
+    type Item = T;
+    type IntoIter = EnumVecIter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        EnumVecIter {
+            v: &self,
+            idx: 0,
+        }
+    }
+}
+
 impl<T: EnumLike> IntoIterator for EnumVec<T> {
     type Item = T;
     type IntoIter = EnumVecIntoIter<T>;
@@ -361,7 +381,95 @@ impl<T: EnumLike> IntoIterator for EnumVec<T> {
 // .iter() and .iter_mut() are implemented for slices,
 // we can't return a slice, or a reference, just the value
 
+/*
+/// Iterator over &mut EnumVec
+pub struct EnumVecIterMut<'a, T: 'a + EnumLike> {
+    v: &'a mut EnumVec<T>,
+    idx: usize,
+}
+
+impl<'a, T: EnumLike> Iterator for EnumVecIterMut<'a, T> {
+    type Item = MutHack<'a, T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.idx;
+
+        self.v.get(i).map(|x| {
+            self.idx += 1;
+            MutHack {
+                value: x,
+                vec: &mut self.v.storage,
+                idx: i,
+            }
+        })
+    }
+}
+*/
+
+/// Iterator over &EnumVec
+pub struct EnumVecIter<'a, T: 'a + EnumLike> {
+    v: &'a EnumVec<T>,
+    idx: usize,
+}
+
+impl<'a, T: EnumLike> Iterator for EnumVecIter<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.idx;
+
+        self.v.get(i).map(|x| {
+            self.idx += 1;
+            x
+        })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.v.len() - self.idx;
+
+        (remaining, Some(remaining))
+    }
+
+    fn count(self) -> usize {
+        let remaining = self.v.len() - self.idx;
+
+        remaining
+    }
+
+    fn last(mut self) -> Option<Self::Item> {
+        let v_len = self.v.len();
+        if v_len == 0 || v_len == self.idx {
+            None
+        } else {
+            self.idx = v_len - 1;
+
+            self.next()
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if self.idx + n < self.v.len() {
+            self.idx += n;
+
+            self.next()
+        } else {
+            self.idx = self.v.len();
+
+            None
+        }
+    }
+}
+
+//impl<T: EnumLike> ExactSizeIterator for EnumVecIter<T> {}
+
 /// Iterator over EnumVec
+// Maybe we can implement it as EnumVecIter?
+/*
+pub struct EnumVecIntoIter<T: EnumLike> {
+    inner: EnumVecIter<'self, T>,
+    v: EnumVec<T>,
+}
+*/
 pub struct EnumVecIntoIter<T: EnumLike> {
     v: EnumVec<T>,
     idx: usize,
