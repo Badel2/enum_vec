@@ -3,6 +3,8 @@ extern crate enum_like_derive;
 extern crate enum_like;
 extern crate enum_vec;
 
+mod bit;
+
 use enum_vec::EnumVec;
 
 #[derive(Debug, EnumLike)]
@@ -48,6 +50,8 @@ fn main() {
     for d in Direction::values() {
         println!("{:?}", d);
     }
+
+    bit::bit_test();
 }
 
 #[cfg(test)]

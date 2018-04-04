@@ -9,6 +9,7 @@ pub use enum_like::*;
 
 use std::marker::PhantomData;
 use std::ops::Range;
+use std::iter::FromIterator;
 
 // Idea for SmallEnumVec: literally copy paste the code
 // s/Vec/SmallVec
@@ -341,6 +342,15 @@ impl<T: EnumLike> Extend<T> for EnumVec<T> {
         for elem in iter {
             self.push(elem);
         }
+    }
+}
+
+impl<T: EnumLike> FromIterator<T> for EnumVec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut v = EnumVec::new();
+        v.extend(iter);
+
+        v
     }
 }
 
