@@ -225,6 +225,7 @@ impl<T: EnumLike> EnumVec<T> {
 
         let other_len = self.len() - at;
         let mut other = Self::with_capacity(other_len);
+        unsafe { other.set_len(other_len); }
         for i in 0..other_len {
             other.set_raw(i, self.get_raw(at + i).unwrap());
         }
@@ -335,6 +336,7 @@ impl<T: EnumLike> EnumVec<T> {
             self.set(i, x);
         }
     }
+    /// Copies `self` into a plain `Vec`
     pub fn to_vec(&self) -> Vec<T> {
         let mut v = Vec::with_capacity(self.len());
         v.extend(self.iter());
@@ -361,6 +363,8 @@ impl<T: EnumLike> Default for EnumVec<T> {
 
 impl<T: EnumLike> Extend<T> for EnumVec<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        self.reserve(iter.size_hint().0);
         // We could resize and use set_raw_unchecked, for speed
         for elem in iter {
             self.push(elem);
