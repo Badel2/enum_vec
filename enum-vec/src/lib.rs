@@ -8,6 +8,7 @@ extern crate enum_like;
 pub use enum_like::*;
 
 use std::marker::PhantomData;
+use std::ops::Range;
 
 // Idea for SmallEnumVec: literally copy paste the code
 // s/Vec/SmallVec
@@ -369,9 +370,10 @@ impl<'a, T: EnumLike> IntoIterator for &'a EnumVec<T> {
     type IntoIter = EnumVecIter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
+        let l = self.len();
         EnumVecIter {
             v: &self,
-            idx: 0,
+            range: 0..l,
         }
     }
 }
@@ -381,9 +383,10 @@ impl<T: EnumLike> IntoIterator for EnumVec<T> {
     type IntoIter = EnumVecIntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
+        let l = self.len();
         EnumVecIntoIter {
             v: self,
-            idx: 0,
+            range: 0..l,
         }
     }
 }
@@ -420,58 +423,42 @@ impl<'a, T: EnumLike> Iterator for EnumVecIterMut<'a, T> {
 /// Iterator over &EnumVec
 pub struct EnumVecIter<'a, T: 'a + EnumLike> {
     v: &'a EnumVec<T>,
-    idx: usize,
+    range: Range<usize>,
 }
 
 impl<'a, T: EnumLike> Iterator for EnumVecIter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let i = self.idx;
-
-        self.v.get(i).map(|x| {
-            self.idx += 1;
-            x
-        })
+        self.range
+            .next()
+            .map(|x| self.v.get(x).unwrap())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.v.len() - self.idx;
-
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 
     fn count(self) -> usize {
-        let remaining = self.v.len() - self.idx;
-
-        remaining
-    }
-
-    fn last(mut self) -> Option<Self::Item> {
-        let v_len = self.v.len();
-        if v_len == 0 || v_len == self.idx {
-            None
-        } else {
-            self.idx = v_len - 1;
-
-            self.next()
-        }
+        self.size_hint().0
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if self.idx + n < self.v.len() {
-            self.idx += n;
-
-            self.next()
-        } else {
-            self.idx = self.v.len();
-
-            None
-        }
+        self.range
+            .nth(n)
+            .map(|x| self.v.get(x).unwrap())
     }
 }
 
-//impl<T: EnumLike> ExactSizeIterator for EnumVecIter<T> {}
+impl<'a, T: EnumLike> DoubleEndedIterator for EnumVecIter<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.range
+            .next_back()
+            .map(|x| self.v.get(x).unwrap())
+    }
+}
+
+impl<'a, T: EnumLike> ExactSizeIterator for EnumVecIter<'a, T> {}
 
 // Maybe we can implement it as EnumVecIter?
 /*
@@ -483,54 +470,38 @@ pub struct EnumVecIntoIter<T: EnumLike> {
 /// Iterator over EnumVec
 pub struct EnumVecIntoIter<T: EnumLike> {
     v: EnumVec<T>,
-    idx: usize,
+    range: Range<usize>,
 }
 
 impl<T: EnumLike> Iterator for EnumVecIntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let i = self.idx;
-
-        self.v.get(i).map(|x| {
-            self.idx += 1;
-            x
-        })
+        self.range
+            .next()
+            .map(|x| self.v.get(x).unwrap())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.v.len() - self.idx;
-
-        (remaining, Some(remaining))
+        self.range.size_hint()
     }
 
     fn count(self) -> usize {
-        let remaining = self.v.len() - self.idx;
-
-        remaining
-    }
-
-    fn last(mut self) -> Option<Self::Item> {
-        let v_len = self.v.len();
-        if v_len == 0 || v_len == self.idx {
-            None
-        } else {
-            self.idx = v_len - 1;
-
-            self.next()
-        }
+        self.size_hint().0
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if self.idx + n < self.v.len() {
-            self.idx += n;
+        self.range
+            .nth(n)
+            .map(|x| self.v.get(x).unwrap())
+    }
+}
 
-            self.next()
-        } else {
-            self.idx = self.v.len();
-
-            None
-        }
+impl<T: EnumLike> DoubleEndedIterator for EnumVecIntoIter<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.range
+            .next_back()
+            .map(|x| self.v.get(x).unwrap())
     }
 }
 
