@@ -361,5 +361,9 @@ mod tests {
         }
 
         check_values_of::<GoodOption<bool>>(3);
+
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
+        struct BoolTS<T, S>(bool, T, S);
+        check_values_of::<BoolTS<(), Option<()>>>(2 * 1 * 2);
     }
 }
