@@ -11,17 +11,18 @@
 extern crate proc_macro;
 #[macro_use]
 extern crate quote;
+#[macro_use]
 extern crate syn;
 
 use std::iter;
 
 use proc_macro::TokenStream;
-use syn::{Data, DataEnum, DataStruct, DeriveInput, Field, Fields, Ident,
-          Variant};
+use quote::ToTokens;
+use quote::Tokens;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
-use quote::Tokens;
-use quote::ToTokens;
+use syn::{Data, DataEnum, DataStruct, DeriveInput, Field, Fields,
+          GenericParam, Generics, Ident, Variant};
 
 #[derive(Debug)]
 struct MatchArm {
@@ -269,6 +270,7 @@ fn all_variants_of(variants: &Punctuated<Variant, Comma>) -> Vec<MatchArm> {
 
 fn generate_rusty_enum_code(
     name: &Ident,
+    generics: Generics,
     variants: &Punctuated<Variant, Comma>,
 ) -> Tokens {
     // We cannot do this:
@@ -294,6 +296,7 @@ fn generate_rusty_enum_code(
 
     impl_enum_like(
         name,
+        generics,
         quote! {
             const NUM_VARIANTS: usize = #enum_count;
             fn from_discr(value: usize) -> Self {
@@ -317,6 +320,7 @@ fn generate_rusty_enum_code(
 
 fn generate_c_enum_code(
     name: &Ident,
+    generics: Generics,
     variants: &Punctuated<Variant, Comma>,
 ) -> Tokens {
     let variant_a = variants.iter().map(|variant| &variant.ident);
@@ -333,6 +337,7 @@ fn generate_c_enum_code(
 
     impl_enum_like(
         name,
+        generics,
         quote! {
             const NUM_VARIANTS: usize = #enum_count;
             fn from_discr(value: usize) -> Self {
@@ -356,6 +361,7 @@ fn generate_c_enum_code(
 
 fn generate_enum_code(
     name: &Ident,
+    generics: Generics,
     variants: &Punctuated<Variant, Comma>,
 ) -> Tokens {
     // We special-case c-like enums because the generated code is much cleaner
@@ -365,21 +371,26 @@ fn generate_enum_code(
 
     // An empty enum {} is c_like
     if c_like {
-        generate_c_enum_code(name, variants)
+        generate_c_enum_code(name, generics, variants)
     } else {
-        generate_rusty_enum_code(name, variants)
+        generate_rusty_enum_code(name, generics, variants)
     }
 }
 
 // struct S;    (true)
 // struct S{};  (false)
 // struct S();  (false)
-fn generate_unit_struct_impl(name: &Ident, unit: bool) -> Tokens {
+fn generate_unit_struct_impl(
+    name: &Ident,
+    generics: Generics,
+    unit: bool,
+) -> Tokens {
     // Luckly Self {} is valid syntax for Self = S();
     let hack = if unit { quote!() } else { quote!({}) };
 
     impl_enum_like(
         name,
+        generics,
         quote! {
             const NUM_VARIANTS: usize = 1usize;
             fn from_discr(_value: usize) -> Self {
@@ -394,6 +405,7 @@ fn generate_unit_struct_impl(name: &Ident, unit: bool) -> Tokens {
 
 fn generate_struct_many_elem(
     name: &Ident,
+    generics: Generics,
     field_names: &[Tokens],
     type_names: &[Tokens],
 ) -> Tokens {
@@ -405,6 +417,7 @@ fn generate_struct_many_elem(
 
     impl_enum_like(
         name,
+        generics,
         quote! {
             const NUM_VARIANTS: usize = #total_num_variants;
             fn from_discr(value: usize) -> Self {
@@ -532,11 +545,12 @@ fn to_discr_body(
 
 fn generate_struct_with_fields(
     name: &Ident,
+    generics: Generics,
     fields: &Punctuated<Field, Comma>,
 ) -> Tokens {
     let elements = fields.len();
     match elements {
-        0 => generate_unit_struct_impl(name, false),
+        0 => generate_unit_struct_impl(name, generics, false),
         _ => {
             let type_names: Vec<Tokens> = fields
                 .iter()
@@ -554,26 +568,50 @@ fn generate_struct_with_fields(
                 }
             }
 
-            generate_struct_many_elem(name, &field_names, &type_names)
+            generate_struct_many_elem(name, generics, &field_names, &type_names)
         }
     }
 }
 
-fn generate_struct_code(name: &Ident, fields: &Fields) -> Tokens {
+fn generate_struct_code(
+    name: &Ident,
+    generics: Generics,
+    fields: &Fields,
+) -> Tokens {
     match *fields {
         // Unit struct, just one variant
         // struct S; (it's not the same as struct S {} or struct S())
-        Fields::Unit => generate_unit_struct_impl(name, true),
-        Fields::Named(ref f) => generate_struct_with_fields(name, &f.named),
-        Fields::Unnamed(ref f) => generate_struct_with_fields(name, &f.unnamed),
+        Fields::Unit => generate_unit_struct_impl(name, generics, true),
+        Fields::Named(ref f) => {
+            generate_struct_with_fields(name, generics, &f.named)
+        }
+        Fields::Unnamed(ref f) => {
+            generate_struct_with_fields(name, generics, &f.unnamed)
+        }
     }
+}
+
+// Add a bound `T: EnumLike` to every type parameter T.
+fn add_trait_bounds(mut generics: Generics) -> Generics {
+    for param in &mut generics.params {
+        if let GenericParam::Type(ref mut type_param) = *param {
+            type_param
+                .bounds
+                .push(parse_quote!(::enum_like::EnumLike));
+        }
+    }
+    generics
 }
 
 // This is a separate function because I'm not sure if ::enum_like::EnumLike
 // is always valid syntax
-fn impl_enum_like(name: &Ident, body: Tokens) -> Tokens {
+fn impl_enum_like(name: &Ident, generics: Generics, body: Tokens) -> Tokens {
+    let generics = add_trait_bounds(generics);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     quote! {
-        unsafe impl ::enum_like::EnumLike for #name {
+        unsafe impl #impl_generics ::enum_like::EnumLike for #name #ty_generics
+        #where_clause {
             #body
         }
     }
@@ -586,9 +624,9 @@ pub fn derive_enum_like(input: TokenStream) -> TokenStream {
     match input.data {
         Data::Enum(DataEnum {
             ref variants, ..
-        }) => generate_enum_code(&input.ident, variants),
+        }) => generate_enum_code(&input.ident, input.generics, variants),
         Data::Struct(DataStruct { ref fields, .. }) => {
-            generate_struct_code(&input.ident, fields)
+            generate_struct_code(&input.ident, input.generics, fields)
         }
         Data::Union(..) => {
             panic!("#[derive(EnumLike)] is only defined for enums and structs")

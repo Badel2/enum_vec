@@ -351,4 +351,15 @@ mod tests {
         // Non and Som(false) should both map to 0, this is an error
         check_values_of::<BadOption<bool>>(3);
     }
+
+    #[test]
+    fn generics() {
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
+        enum GoodOption<T> {
+            Non,
+            Som(T),
+        }
+
+        check_values_of::<GoodOption<bool>>(3);
+    }
 }
