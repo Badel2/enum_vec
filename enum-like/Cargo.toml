@@ -1,6 +1,0 @@
-[package]
-name = "enum-like"
-version = "0.1.0"
-authors = ["Badel2 <2badel2@gmail.com>"]
-
-[dependencies]
