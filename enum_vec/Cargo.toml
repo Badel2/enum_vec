@@ -2,7 +2,14 @@
 name = "enum_vec"
 version = "0.1.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
+license = "GPL-3.0+"
+description = """
+Efficiently store a vector of enum variants as a packed n-bit vec.
+"""
+repository = "https://github.com/badel2/enum-vec"
+documentation = "https://badel2.github.io/enum-vec/enum_vec"
+keywords = ["bitvec", "data-structure", "vector"]
 
 [dependencies]
-enum_like_derive = { path = "../enum_like_derive" }
-enum_like = { path = "../enum_like" }
+enum_like = "0.1"
+enum_like_derive = "0.1"
