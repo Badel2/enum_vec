@@ -419,6 +419,54 @@ array_impls! {
     (0) -> A
 }
 
+/// Packs an `EnumLike` value into a `u8`, if possible
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PackedU8<T> {
+    discr: u8,
+    _phantom: PhantomData<T>,
+}
+
+impl<T: EnumLike> PackedU8<T> {
+    // If T has more than 2^8 variants, print error at compile time
+    const CHECK_LIMIT_VARIANTS: usize = (1 << 8) - T::NUM_VARIANTS;
+    /// Packs `T` into 8 bits. If it is not possible, error at compile time.
+    pub fn new(a: T) -> Self {
+        assert!(Self::CHECK_LIMIT_VARIANTS <= (1 << 8));
+        Self {
+            discr: T::to_discr(a) as u8,
+            _phantom: PhantomData,
+        }
+    }
+    /// Return the packed value
+    pub fn value(&self) -> T {
+        T::from_discr(self.discr as usize)
+    }
+}
+
+/// Packs an `EnumLike` value into a `u16`, if possible
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PackedU16<T> {
+    discr: u16,
+    _phantom: PhantomData<T>,
+}
+
+impl<T: EnumLike> PackedU16<T> {
+    // If T has more than 2^16 variants, print error at compile time
+    const CHECK_LIMIT_VARIANTS: usize = (1 << 16) - T::NUM_VARIANTS;
+    /// Packs `T` into 16 bits. If it is not possible, error at compile time.
+    pub fn new(a: T) -> Self {
+        assert!(Self::CHECK_LIMIT_VARIANTS <= (1 << 16));
+        Self {
+            discr: T::to_discr(a) as u16,
+            _phantom: PhantomData,
+        }
+    }
+    /// Return the packed value
+    pub fn value(&self) -> T {
+        T::from_discr(self.discr as usize)
+    }
+}
+
 /// Helper trait to iterate over all the possible values of an enum.
 /// Note: you don't need to implement this trait, it is provided by `EnumLike`.
 ///
@@ -669,6 +717,27 @@ mod tests {
             Self { tens, ones }
         }
     }
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    struct ThreeDigits {
+        hundreds: Digit,
+        tens: Digit,
+        ones: Digit,
+    }
+
+    unsafe impl EnumLike for ThreeDigits {
+        const NUM_VARIANTS: usize = Digit::NUM_VARIANTS * Digit::NUM_VARIANTS * Digit::NUM_VARIANTS;
+        fn to_discr(self) -> usize {
+            self.hundreds.to_discr() * Digit::NUM_VARIANTS * Digit::NUM_VARIANTS +
+                self.tens.to_discr() * Digit::NUM_VARIANTS + self.ones.to_discr()
+        }
+        fn from_discr(x: usize) -> Self {
+            let hundreds = Digit::from_discr(x / (Digit::NUM_VARIANTS * Digit::NUM_VARIANTS));
+            let tens = Digit::from_discr((x / Digit::NUM_VARIANTS) % Digit::NUM_VARIANTS);
+            let ones = Digit::from_discr(x % Digit::NUM_VARIANTS);
+
+            Self { hundreds, tens, ones }
+        }
+    }
 
     #[test]
     fn values_of() {
@@ -821,4 +890,27 @@ mod tests {
             Err(Err(None))
         );
     }
+
+    #[test]
+    fn packed_u8_u16() {
+        let a = false;
+        let a_p8 = PackedU8::new(a.clone());
+        assert_eq!(a, a_p8.value());
+
+        let b = ThreeDigits::values().nth(123);
+        let b_p16 = PackedU16::new(b.clone());
+        assert_eq!(b, b_p16.value());
+
+    }
+
+    /*
+    // TODO: Compile fail tests are not supported?
+    // Check out compiletest-rs crate
+    #[test]
+    #[compile_fail]
+    fn packed_u8_too_small() {
+        let b = ThreeDigits::values().nth(123);
+        let b_p8 = PackedU8::new(b);
+    }
+    */
 }
