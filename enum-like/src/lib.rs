@@ -725,17 +725,27 @@ mod tests {
     }
 
     unsafe impl EnumLike for ThreeDigits {
-        const NUM_VARIANTS: usize = Digit::NUM_VARIANTS * Digit::NUM_VARIANTS * Digit::NUM_VARIANTS;
+        const NUM_VARIANTS: usize =
+            Digit::NUM_VARIANTS * Digit::NUM_VARIANTS * Digit::NUM_VARIANTS;
         fn to_discr(self) -> usize {
-            self.hundreds.to_discr() * Digit::NUM_VARIANTS * Digit::NUM_VARIANTS +
-                self.tens.to_discr() * Digit::NUM_VARIANTS + self.ones.to_discr()
+            self.hundreds.to_discr() * Digit::NUM_VARIANTS * Digit::NUM_VARIANTS
+                + self.tens.to_discr() * Digit::NUM_VARIANTS
+                + self.ones.to_discr()
         }
         fn from_discr(x: usize) -> Self {
-            let hundreds = Digit::from_discr(x / (Digit::NUM_VARIANTS * Digit::NUM_VARIANTS));
-            let tens = Digit::from_discr((x / Digit::NUM_VARIANTS) % Digit::NUM_VARIANTS);
+            let hundreds = Digit::from_discr(
+                x / (Digit::NUM_VARIANTS * Digit::NUM_VARIANTS),
+            );
+            let tens = Digit::from_discr(
+                (x / Digit::NUM_VARIANTS) % Digit::NUM_VARIANTS,
+            );
             let ones = Digit::from_discr(x % Digit::NUM_VARIANTS);
 
-            Self { hundreds, tens, ones }
+            Self {
+                hundreds,
+                tens,
+                ones,
+            }
         }
     }
 
@@ -881,14 +891,8 @@ mod tests {
             Result<Result<Option<()>, bool>, Result<(), Option<bool>>>;
 
         check_values_of::<Abomination>(8);
-        assert_eq!(
-            Abomination::values().nth(1).unwrap(),
-            Ok(Ok(None))
-        );
-        assert_eq!(
-            Abomination::values().last().unwrap(),
-            Err(Err(None))
-        );
+        assert_eq!(Abomination::values().nth(1).unwrap(), Ok(Ok(None)));
+        assert_eq!(Abomination::values().last().unwrap(), Err(Err(None)));
     }
 
     #[test]
@@ -900,7 +904,6 @@ mod tests {
         let b = ThreeDigits::values().nth(123);
         let b_p16 = PackedU16::new(b.clone());
         assert_eq!(b, b_p16.value());
-
     }
 
     /*

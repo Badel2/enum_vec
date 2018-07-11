@@ -7,10 +7,10 @@ extern crate enum_like;
 /// Not sure if this is needed
 pub use enum_like::*;
 
+use std::fmt;
+use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::Range;
-use std::iter::FromIterator;
-use std::fmt;
 
 // Idea for SmallEnumVec: literally copy paste the code
 // s/Vec/SmallVec
@@ -116,9 +116,8 @@ impl<T: EnumLike> EnumVec<T> {
         self.grow_if_needed();
         let idx = self.num_elements;
         // max len is usize::MAX
-        self.num_elements = self.num_elements
-            .checked_add(1)
-            .expect("capacity overflow");
+        self.num_elements =
+            self.num_elements.checked_add(1).expect("capacity overflow");
         self.set(idx, x);
     }
     pub fn pop(&mut self) -> Option<T> {
@@ -132,13 +131,13 @@ impl<T: EnumLike> EnumVec<T> {
         }
     }
     pub fn reserve(&mut self, additional: usize) {
-        let desired_cap = self.len()
+        let desired_cap = self
+            .len()
             .checked_add(additional)
             .expect("capacity overflow");
         if desired_cap > self.capacity() {
             // Optimistically reserve more than is needed
-            self.storage
-                .reserve(1 + additional / Self::ELEMS_PER_BLOCK);
+            self.storage.reserve(1 + additional / Self::ELEMS_PER_BLOCK);
         }
     }
     pub fn shrink_to_fit(&mut self) {
@@ -225,7 +224,9 @@ impl<T: EnumLike> EnumVec<T> {
 
         let other_len = self.len() - at;
         let mut other = Self::with_capacity(other_len);
-        unsafe { other.set_len(other_len); }
+        unsafe {
+            other.set_len(other_len);
+        }
         for i in 0..other_len {
             other.set_raw(i, self.get_raw(at + i).unwrap());
         }
@@ -467,9 +468,7 @@ impl<'a, T: EnumLike> Iterator for EnumVecIter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.range
-            .next()
-            .map(|x| self.v.get(x).unwrap())
+        self.range.next().map(|x| self.v.get(x).unwrap())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -481,17 +480,13 @@ impl<'a, T: EnumLike> Iterator for EnumVecIter<'a, T> {
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.range
-            .nth(n)
-            .map(|x| self.v.get(x).unwrap())
+        self.range.nth(n).map(|x| self.v.get(x).unwrap())
     }
 }
 
 impl<'a, T: EnumLike> DoubleEndedIterator for EnumVecIter<'a, T> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.range
-            .next_back()
-            .map(|x| self.v.get(x).unwrap())
+        self.range.next_back().map(|x| self.v.get(x).unwrap())
     }
 }
 
@@ -514,9 +509,7 @@ impl<T: EnumLike> Iterator for EnumVecIntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.range
-            .next()
-            .map(|x| self.v.get(x).unwrap())
+        self.range.next().map(|x| self.v.get(x).unwrap())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -528,17 +521,13 @@ impl<T: EnumLike> Iterator for EnumVecIntoIter<T> {
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.range
-            .nth(n)
-            .map(|x| self.v.get(x).unwrap())
+        self.range.nth(n).map(|x| self.v.get(x).unwrap())
     }
 }
 
 impl<T: EnumLike> DoubleEndedIterator for EnumVecIntoIter<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.range
-            .next_back()
-            .map(|x| self.v.get(x).unwrap())
+        self.range.next_back().map(|x| self.v.get(x).unwrap())
     }
 }
 

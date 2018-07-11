@@ -21,8 +21,10 @@ use quote::ToTokens;
 use quote::Tokens;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
-use syn::{Data, DataEnum, DataStruct, DeriveInput, Field, Fields,
-          GenericParam, Generics, Ident, Variant};
+use syn::{
+    Data, DataEnum, DataStruct, DeriveInput, Field, Fields, GenericParam,
+    Generics, Ident, Variant,
+};
 
 #[derive(Debug)]
 struct MatchArm {
@@ -236,10 +238,7 @@ fn all_variants_of(variants: &Punctuated<Variant, Comma>) -> Vec<MatchArm> {
             Fields::Unnamed(ref fu) => {
                 // Ok(x): 1 element
                 // A(0, 1, 2): 3 elements
-                assert!(
-                    fu.unnamed.len() > 0,
-                    "This is a unit field, wtf"
-                );
+                assert!(fu.unnamed.len() > 0, "This is a unit field, wtf");
                 let m = MatchArm::from_fields(
                     v.ident,
                     &fu.unnamed,
@@ -249,10 +248,7 @@ fn all_variants_of(variants: &Punctuated<Variant, Comma>) -> Vec<MatchArm> {
                 x.push(m);
             }
             Fields::Named(ref fu) => {
-                assert!(
-                    fu.named.len() > 0,
-                    "This is a named unit field, wtf"
-                );
+                assert!(fu.named.len() > 0, "This is a named unit field, wtf");
                 let m = MatchArm::from_fields(
                     v.ident,
                     &fu.named,
@@ -279,15 +275,9 @@ fn generate_rusty_enum_code(
     //
     // Instead we assume that every variant implements EnumLike
     let enum_variants = all_variants_of(variants);
-    let match_arm_from = enum_variants
-        .iter()
-        .map(|e| e.print_from_discr(name));
-    let match_arm_to = enum_variants
-        .iter()
-        .map(|e| e.print_to_discr(name));
-    let enum_count_s = enum_variants
-        .iter()
-        .map(|e| e.print_num_variants());
+    let match_arm_from = enum_variants.iter().map(|e| e.print_from_discr(name));
+    let match_arm_to = enum_variants.iter().map(|e| e.print_to_discr(name));
+    let enum_count_s = enum_variants.iter().map(|e| e.print_num_variants());
     let enum_count = quote!(
         #(
             #enum_count_s +
@@ -365,9 +355,7 @@ fn generate_enum_code(
     variants: &Punctuated<Variant, Comma>,
 ) -> Tokens {
     // We special-case c-like enums because the generated code is much cleaner
-    let c_like = variants
-        .iter()
-        .all(|v| v.fields == Fields::Unit);
+    let c_like = variants.iter().all(|v| v.fields == Fields::Unit);
 
     // An empty enum {} is c_like
     if c_like {
@@ -552,10 +540,8 @@ fn generate_struct_with_fields(
     match elements {
         0 => generate_unit_struct_impl(name, generics, false),
         _ => {
-            let type_names: Vec<Tokens> = fields
-                .iter()
-                .map(|f| f.ty.clone().into_tokens())
-                .collect();
+            let type_names: Vec<Tokens> =
+                fields.iter().map(|f| f.ty.clone().into_tokens()).collect();
             let mut field_names: Vec<Tokens> = vec![];
             for (i, n) in fields.iter().enumerate() {
                 if let Some(x) = n.ident {
@@ -595,9 +581,7 @@ fn generate_struct_code(
 fn add_trait_bounds(mut generics: Generics) -> Generics {
     for param in &mut generics.params {
         if let GenericParam::Type(ref mut type_param) = *param {
-            type_param
-                .bounds
-                .push(parse_quote!(::enum_like::EnumLike));
+            type_param.bounds.push(parse_quote!(::enum_like::EnumLike));
         }
     }
     generics
@@ -622,9 +606,9 @@ fn impl_enum_like(name: &Ident, generics: Generics, body: Tokens) -> Tokens {
 pub fn derive_enum_like(input: TokenStream) -> TokenStream {
     let input: DeriveInput = syn::parse(input).unwrap();
     match input.data {
-        Data::Enum(DataEnum {
-            ref variants, ..
-        }) => generate_enum_code(&input.ident, input.generics, variants),
+        Data::Enum(DataEnum { ref variants, .. }) => {
+            generate_enum_code(&input.ident, input.generics, variants)
+        }
         Data::Struct(DataStruct { ref fields, .. }) => {
             generate_struct_code(&input.ident, input.generics, fields)
         }
