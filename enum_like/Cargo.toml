@@ -3,5 +3,20 @@ name = "enum_like"
 version = "0.1.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
 license = "GPL-3.0+"
+description = """
+A trait to treat any type as an enum.
+
+If a type has a reasonably small number of variants,
+for example a `struct A(bool, bool)` which has 4 variants,
+this trait provides a 1-to-1 mapping from type value to a
+discriminant value.
+
+It also provides an iterator over all the possible values.
+
+This crate is mainly meant to be used along with
+`enum_like_derive` and `enum_vec`.
+"""
+repository = "https://github.com/badel2/enum-vec"
+documentation = "https://badel2.github.io/enum-vec/enum_vec"
 
 [dependencies]
