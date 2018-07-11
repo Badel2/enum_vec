@@ -2,6 +2,13 @@
 name = "enum_like_derive"
 version = "0.1.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
+license = "GPL-3.0+"
+description = """
+Proc macro to derive the EnumLike trait from the enum_like
+crate.
+"""
+repository = "https://github.com/badel2/enum-vec"
+documentation = "https://badel2.github.io/enum-vec/enum_vec"
 
 [lib]
 proc-macro = true
