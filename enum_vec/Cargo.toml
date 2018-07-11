@@ -1,0 +1,8 @@
+[package]
+name = "enum_vec"
+version = "0.1.0"
+authors = ["Badel2 <2badel2@gmail.com>"]
+
+[dependencies]
+enum_like_derive = { path = "../enum_like_derive" }
+enum_like = { path = "../enum_like" }
