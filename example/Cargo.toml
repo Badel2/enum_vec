@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
 
 [dependencies]
-enum_like = { path = "../enum_like" }
-enum_like_derive = { path = "../enum_like_derive" }
-enum_vec = { path = "../enum_vec" }
+enum_like = "0.1.0"
+enum_like_derive = "0.1.0"
+enum_vec = "0.1.0"
