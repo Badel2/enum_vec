@@ -11,6 +11,7 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::Range;
+use std::hash::{Hash, Hasher};
 
 // Idea for SmallEnumVec: literally copy paste the code
 // s/Vec/SmallVec
@@ -100,6 +101,15 @@ impl<T: EnumLike> EnumVec<T> {
             phantom: PhantomData,
         }
     }
+    /// Returns the number of elements that can be hold without
+    /// allocating new memory.
+    ///
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let ev = EnumVec::<bool>::with_capacity(53);
+    /// assert!(ev.capacity() >= 53);
+    /// ```
     pub fn capacity(&self) -> usize {
         self.storage
             .capacity()
@@ -112,24 +122,14 @@ impl<T: EnumLike> EnumVec<T> {
     pub fn set(&mut self, i: usize, x: T) {
         self.set_raw(i, x.to_discr());
     }
-    pub fn push(&mut self, x: T) {
-        self.grow_if_needed();
-        let idx = self.num_elements;
-        // max len is usize::MAX
-        self.num_elements =
-            self.num_elements.checked_add(1).expect("capacity overflow");
-        self.set(idx, x);
-    }
-    pub fn pop(&mut self) -> Option<T> {
-        if self.is_empty() {
-            None
-        } else {
-            let x = self.get(self.num_elements - 1).unwrap();
-            self.num_elements -= 1;
-
-            Some(x)
-        }
-    }
+    /// Reserves capacity for at least `additional` more elements.
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let mut ev: EnumVec<Option<()>> = vec![None, None, None].into();
+    /// ev.reserve(100);
+    /// assert!(ev.capacity() >= 100 + 3);
+    /// ```
     pub fn reserve(&mut self, additional: usize) {
         let desired_cap = self
             .len()
@@ -140,6 +140,7 @@ impl<T: EnumLike> EnumVec<T> {
             self.storage.reserve(1 + additional / Self::ELEMS_PER_BLOCK);
         }
     }
+    /// Shrinks the capacity as much as possible.
     pub fn shrink_to_fit(&mut self) {
         self.fix_storage();
         self.storage.shrink_to_fit();
@@ -153,6 +154,19 @@ impl<T: EnumLike> EnumVec<T> {
             }
         }
     }
+    /// Remove an element from an arbitrary position in O(1) time,
+    /// but without preserving the ordering.
+    /// This is accomplished by swapping the desired element with
+    /// the last element, and then calling `pop()`.
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let mut ev: EnumVec<bool> = vec![true, true, true, false, false].into();
+    /// ev.swap_remove(0);
+    /// assert_eq!(&ev.to_vec(), &[false, true, true, false]);
+    /// ev.swap_remove(1);
+    /// assert_eq!(&ev.to_vec(), &[false, false, true]);
+    /// ```
     pub fn swap_remove(&mut self, index: usize) -> T {
         let length = self.len();
         self.swap(index, length - 1);
@@ -183,6 +197,55 @@ impl<T: EnumLike> EnumVec<T> {
 
         x
     }
+    /// Retains only the elements specified by the predicate
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let mut v: EnumVec<(bool, bool)> = vec![(true, true), (false, false), (true, false),
+    ///     (false, true)].into();
+    /// v.retain(|x| x.0 == true);
+    /// let a = v.to_vec();
+    /// assert_eq!(&a, &[(true, true), (true, false)]);
+    /// ```
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&T) -> bool
+    {
+        let mut i_get = 0;
+        let mut i_set = 0;
+
+        let l = self.len();
+        while i_get < l {
+            let x = self.get(i_get).unwrap();
+            if f(&x) {
+                self.set(i_set, x);
+                i_set += 1;
+            }
+            i_get += 1;
+        }
+
+        unsafe {
+            self.set_len(i_set);
+        }
+    }
+    pub fn push(&mut self, x: T) {
+        self.grow_if_needed();
+        let idx = self.num_elements;
+        // max len is usize::MAX
+        self.num_elements =
+            self.num_elements.checked_add(1).expect("capacity overflow");
+        self.set(idx, x);
+    }
+    pub fn pop(&mut self) -> Option<T> {
+        if self.is_empty() {
+            None
+        } else {
+            let x = self.get(self.num_elements - 1).unwrap();
+            self.num_elements -= 1;
+
+            Some(x)
+        }
+    }
     pub fn append(&mut self, other: &mut Self) {
         let other_len = other.len();
         let self_len = self.len();
@@ -204,10 +267,27 @@ impl<T: EnumLike> EnumVec<T> {
             }
         }
     }
+    /// Sets the length to zero, removing all the elements.
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let mut ev = EnumVec::new();
+    /// ev.push(Some(false));
+    /// assert_eq!(ev.len(), 1);
+    /// ev.clear();
+    /// assert_eq!(ev.len(), 0);
+    /// assert!(ev.is_empty());
+    ///
+    /// unsafe {
+    ///     ev.set_len(1);
+    ///     assert_eq!(ev.pop().unwrap(), Some(false));
+    /// }
+    /// ```
     pub fn clear(&mut self) {
         // This doesn't actually clear anything, it justs sets the len to 0
         self.truncate(0);
     }
+    /// Returns the length of the vector, the number of elements it holds.
     pub fn len(&self) -> usize {
         self.num_elements
     }
@@ -226,11 +306,11 @@ impl<T: EnumLike> EnumVec<T> {
         let mut other = Self::with_capacity(other_len);
         unsafe {
             other.set_len(other_len);
+            for i in 0..other_len {
+                other.set_raw_unchecked(i, self.get_raw_unchecked(at + i));
+            }
+            self.set_len(at);
         }
-        for i in 0..other_len {
-            other.set_raw(i, self.get_raw(at + i).unwrap());
-        }
-        self.truncate(at);
 
         other
     }
@@ -257,6 +337,7 @@ impl<T: EnumLike> EnumVec<T> {
 
         Some(discr)
     }
+
     /// Get the raw discriminant without bounds checking
     pub unsafe fn get_raw_unchecked(&self, i: usize) -> usize {
         let (idx_w, idx_b) = Self::block_index(i);
@@ -265,6 +346,7 @@ impl<T: EnumLike> EnumVec<T> {
 
         discr as usize
     }
+
     fn set_raw(&mut self, i: usize, discr: usize) {
         if i >= self.len() {
             panic!("index out of bounds: {} >= {}", i, self.len());
@@ -274,8 +356,9 @@ impl<T: EnumLike> EnumVec<T> {
             self.set_raw_unchecked(i, discr);
         }
     }
+
     /// Set the raw discriminant without bounds checking. It is assumed that
-    /// the discriminant has only `Self::BITS_PER_ELEM` bits set.
+    /// the discriminant is lower than `T::NUM_ELEMENTS`.
     pub unsafe fn set_raw_unchecked(&mut self, i: usize, discr: usize) {
         let (idx_w, idx_b) = Self::block_index(i);
         let block = self.storage.get_unchecked_mut(idx_w);
@@ -286,13 +369,17 @@ impl<T: EnumLike> EnumVec<T> {
         /*
         let discr_old = (*block >> idx_b) & Self::ELEMENT_MASK;
         *block ^= (discr_old ^ discr as u32) << idx_b; 
-        */    }
-    fn swap(&mut self, ia: usize, ib: usize) {
+        */
+    }
+
+    /// Swap two elements.
+    pub fn swap(&mut self, ia: usize, ib: usize) {
         let a = self.get_raw(ia).unwrap();
         let b = self.get_raw(ib).unwrap();
         self.set_raw(ia, b);
         self.set_raw(ib, a);
     }
+
     fn grow_if_needed(&mut self) {
         // Grow if needed
         if (self.len() % Self::ELEMS_PER_BLOCK == 0)
@@ -301,11 +388,13 @@ impl<T: EnumLike> EnumVec<T> {
             self.storage.push(0);
         }
     }
+
     // self.storage.len does never decrease, so here we fix it
     fn fix_storage(&mut self) {
         let len = Self::blocks_for_elements(self.len());
         self.storage.truncate(len);
     }
+
     // returns pair: (block, bit offset inside block)
     // bit offset means bit shift left
     // use ((self.storage[block] >> bit_offset) & ELEMENT_MASK) to get the value
@@ -315,17 +404,41 @@ impl<T: EnumLike> EnumVec<T> {
             (i % Self::ELEMS_PER_BLOCK) * Self::BITS_PER_ELEM,
         )
     }
+
     fn blocks_for_elements(n: usize) -> usize {
         n.saturating_add(Self::ELEMS_PER_BLOCK - 1) / Self::ELEMS_PER_BLOCK
     }
+
     pub fn iter<'a>(&'a self) -> EnumVecIter<'a, T> {
         (&self).into_iter()
     }
+
+    // iter_mut cannot be implemented because we cannot take a reference to
+    // the values inside the EnumVec. Use for_each() instead.
     /*
     pub fn iter_mut<'a>(&'a mut self) -> EnumVecIterMut<'a, T> {
         (&mut self).into_iter()
     }
     */
+    /// Apply a function to each element in place, this is a substitute to
+    /// for loops:
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let mut v = vec![true, false, true];
+    /// for x in v.iter_mut() {
+    ///     *x = !*x;
+    /// }
+    ///
+    /// // Is equivalent to
+    /// let mut ev: EnumVec<_> = vec![true, false, true].into();
+    /// ev.for_each(|x| {
+    ///     *x = !*x;
+    /// });
+    ///
+    /// assert_eq!(v, ev.to_vec());
+    /// assert_eq!(&v, &[false, true, false]);
+    /// ```
     pub fn for_each<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T),
@@ -334,10 +447,21 @@ impl<T: EnumLike> EnumVec<T> {
         for i in 0..l {
             let mut x = self.get(i).unwrap();
             f(&mut x);
+            // if x changed?
             self.set(i, x);
         }
     }
-    /// Copies `self` into a plain `Vec`
+
+    /// Copies `self` into a plain `Vec`.
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let mut ev = EnumVec::new();
+    /// ev.push(true);
+    /// ev.push(false);
+    /// let v = vec![true, false];
+    /// assert_eq!(ev.to_vec(), v);
+    /// ```
     pub fn to_vec(&self) -> Vec<T> {
         let mut v = Vec::with_capacity(self.len());
         v.extend(self.iter());
@@ -382,26 +506,21 @@ impl<T: EnumLike> FromIterator<T> for EnumVec<T> {
     }
 }
 
-/*
-//From and Into are just extend
+// Convenience impls to allow
+// let e: EnumVec<_> = vec![A, B, C].into();
+// and
+// let v: Vec<_> = e.into();
 impl<T: EnumLike> From<Vec<T>> for EnumVec<T> {
-    fn from(vec: Vec<T>) -> Self {
-        let mut e = EnumVec::new();
-        e.extend(vec);
-
-        e
+    fn from(v: Vec<T>) -> Self {
+        EnumVec::from_iter(v)
     }
 }
 
 impl<T: EnumLike> Into<Vec<T>> for EnumVec<T> {
     fn into(self) -> Vec<T> {
-        let mut v = Vec::new();
-        v.extend(self);
-
-        v
+        self.to_vec()
     }
 }
-*/
 
 impl<'a, T: EnumLike> IntoIterator for &'a EnumVec<T> {
     type Item = T;
@@ -544,6 +663,38 @@ impl<T: EnumLike> Rem<usize> for EnumVec<T> {
     }
 }
 */
+
+impl<T: EnumLike> PartialEq for EnumVec<T> {
+    fn eq(&self, other: &EnumVec<T>) -> bool {
+        // TODO: efficient block-wise comparison
+        if self.len() == other.len() {
+            let l = self.len();
+            for i in 0..l {
+                unsafe { // Safe because we just checked the length
+                    if self.get_raw_unchecked(i) != other.get_raw_unchecked(i) {
+                        return false;
+                    }
+                }
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl<T: EnumLike> Eq for EnumVec<T> {}
+
+impl<T: EnumLike> Hash for EnumVec<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let l = self.len();
+        for i in 0..l {
+            let x = unsafe { self.get_raw_unchecked(i) };
+            x.hash(state);
+        }
+    }
+}
 
 // Warning: when implementing hash we must zero out the last block
 // of the storage, otherwise the garbage data will make the hash inconsistent.
