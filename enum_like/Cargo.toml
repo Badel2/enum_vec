@@ -1,6 +1,6 @@
 [package]
 name = "enum_like"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
 license = "GPL-3.0+"
 description = """
@@ -16,7 +16,7 @@ It also provides an iterator over all the possible values.
 This crate is mainly meant to be used along with
 `enum_like_derive` and `enum_vec`.
 """
-repository = "https://github.com/badel2/enum-vec"
-documentation = "https://badel2.github.io/enum-vec/enum_vec"
+repository = "https://github.com/badel2/enum_vec"
+documentation = "https://docs.rs/enum_vec"
 
 [dependencies]
