@@ -1,6 +1,4 @@
 #![deny(missing_docs)]
-// Should we require T to be Clone?
-
 //! This crate provides the `EnumLike` trait, which defines a mapping from
 //! a given type to `usize`.
 //!
@@ -41,6 +39,7 @@
 /// ```
 /// use enum_like::EnumLike;
 ///
+/// #[derive(Copy, Clone, Debug)]
 /// enum ExtendedBool {
 ///     True,
 ///     False,
@@ -74,6 +73,7 @@
 /// ```
 /// use enum_like::EnumLike;
 ///
+/// #[derive(Copy, Clone, Debug)]
 /// enum SomeFlags {
 ///     Read = 4,
 ///     Write = 2,
@@ -111,6 +111,7 @@
 /// ```
 /// use enum_like::EnumLike;
 ///
+/// #[derive(Copy, Clone, Debug)]
 /// struct Digit {
 ///     x: u8, // x >= 0 && x <= 9
 /// }
@@ -131,7 +132,7 @@
 /// value in the [0, 9] range. Otherwise, if `self.to_discr()` returns any number
 /// bigger than `NUM_VARIANTS`, everything breaks.
 ///
-pub unsafe trait EnumLike {
+pub unsafe trait EnumLike: Copy {
     /// The number of variants of this type
     const NUM_VARIANTS: usize;
 
@@ -478,7 +479,7 @@ impl<T: EnumLike> PackedU16<T> {
 /// ```
 /// use enum_like::{EnumLike, EnumValues};
 ///
-/// #[derive(Debug)]
+/// #[derive(Copy, Clone, Debug)]
 /// enum ABC { A, B, C }
 ///
 /// unsafe impl EnumLike for ABC {
