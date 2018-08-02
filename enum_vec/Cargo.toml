@@ -1,6 +1,6 @@
 [package]
 name = "enum_vec"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
 license = "GPL-3.0+"
 description = """
@@ -11,5 +11,5 @@ documentation = "https://badel2.github.io/enum-vec/enum_vec"
 keywords = ["bitvec", "data-structure", "vector"]
 
 [dependencies]
-enum_like = "0.1"
+enum_like = "0.2"
 enum_like_derive = "0.1"
