@@ -19,6 +19,16 @@ use std::hash::{Hash, Hasher};
 // storage: union { Vec<u32>, [usize; 3] }
 // Tag: MSB of num_elements
 
+#[macro_export]
+macro_rules! enum_vec {
+    ($elem:expr; $n:expr) => ({
+        EnumVec::from_elem($elem, $n)
+    });
+    ($($x:expr),*$(,)*) => ({
+        EnumVec::from_slice(&[$($x),*])
+    });
+}
+
 /// A vector which efficiently stores enum variants.
 #[derive(Clone)]
 pub struct EnumVec<T: EnumLike> {
@@ -465,6 +475,26 @@ impl<T: EnumLike> EnumVec<T> {
     pub fn to_vec(&self) -> Vec<T> {
         let mut v = Vec::with_capacity(self.len());
         v.extend(self.iter());
+
+        v
+    }
+
+    pub fn from_elem(x: T, n: usize) -> Self
+    where
+        T: Clone,
+    {
+        let mut v = EnumVec::new();
+        v.resize(n, x);
+
+        v
+    }
+
+    pub fn from_slice(x: &[T]) -> Self
+    where
+        T: Clone,
+    {
+        let mut v = EnumVec::new();
+        v.extend(x.iter().map(|a| a.clone()));
 
         v
     }
@@ -983,4 +1013,17 @@ mod tests {
         let _v: EnumVec<()> = EnumVec::new();
     }
     */
+
+    #[test]
+    fn macro_enum_vec() {
+        let a = vec![ABC::C, ABC::A, ABC::A, ABC::B, ABC::C];
+        let b = enum_vec![ABC::C, ABC::A, ABC::A, ABC::B, ABC::C];
+
+        assert_eq!(a, b.to_vec());
+
+        let c = vec![ABC::C; 10];
+        let d = enum_vec![ABC::C; 10];
+
+        assert_eq!(c, d.to_vec());
+    }
 }
