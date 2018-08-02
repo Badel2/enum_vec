@@ -7,7 +7,7 @@ mod bit;
 
 use enum_vec::EnumVec;
 
-#[derive(Debug, EnumLike)]
+#[derive(Copy, Clone, Debug, EnumLike)]
 enum Direction {
     Left,
     Right,
@@ -100,83 +100,83 @@ mod tests {
         chk_ty::<((), (), ())>();
         //chk_ty::<((),(),(),(),)>();
 
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct A;
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct B {};
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct C();
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum D {
             OneValue,
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum E {
             OneUnnamedValue(D),
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum F {
             OneUnnamedValue(D, E),
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum G {
             OneUnnamedValue(D, E, F),
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum H {
             OneNamedValue { e: E },
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum H2 {
             OneNamedValue { e: E, f: F },
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum H3 {
             OneNamedValue { e: E, f: F, g: G },
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum H4 {
             OneNamedValue { e: E, f: F, g: G, h: H },
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum I {
             ProductOfOneIsOne(A, B, C, D, E, F, G, H),
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct J8(A, B, C, D, E, F, G, H);
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct J4(A, B, C, D);
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct J3(A, B, C);
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct J2(A, B);
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct J1(A);
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct J0();
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct K4 {
             a: A,
             b: B,
             c: C,
             d: D,
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct K3 {
             a: A,
             b: B,
             c: C,
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct K2 {
             a: A,
             b: B,
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct K1 {
             a: A,
         };
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         struct K0 {};
 
         chk_ty::<A>();
@@ -210,10 +210,10 @@ mod tests {
             check_values_of::<T>(0);
         }
 
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum Empty {}
 
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum EmptyVar {
             A(Empty),
             B(Empty, Empty),
@@ -233,7 +233,7 @@ mod tests {
         chk_ty::<(Empty, Empty, Empty)>();
         chk_ty::<EmptyVar>();
 
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum OneVar {
             A(Empty),
             B(Empty, Empty),
@@ -241,7 +241,7 @@ mod tests {
             D { e: Empty, d: Empty },
             E,
         }
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum TwoVar {
             A(Empty),
             A1,
@@ -250,7 +250,7 @@ mod tests {
             D { e: Empty, d: Empty },
             E,
         }
-        #[derive(Clone, Debug, PartialEq, EnumLike)]
+        #[derive(Copy, Clone, Debug, PartialEq, EnumLike)]
         enum ManyVar {
             A(Empty),
             A1(bool), // 2
