@@ -6,8 +6,8 @@ license = "GPL-3.0+"
 description = """
 Efficiently store a vector of enum variants as a packed n-bit vec.
 """
-repository = "https://github.com/badel2/enum-vec"
-documentation = "https://badel2.github.io/enum-vec/enum_vec"
+repository = "https://github.com/badel2/enum_vec"
+documentation = "https://docs.rs/enum_vec"
 keywords = ["bitvec", "data-structure", "vector"]
 
 [dependencies]
