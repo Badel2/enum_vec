@@ -14,9 +14,12 @@ discriminant value.
 It also provides an iterator over all the possible values.
 
 This crate is mainly meant to be used along with
-`enum_like_derive` and `enum_vec`.
+[enum_like_derive](https://crates.io/crates/enum_like_derive)
+and
+[enum_vec](https://crates.io/crates/enum_vec)
+.
 """
 repository = "https://github.com/badel2/enum_vec"
-documentation = "https://docs.rs/enum_vec"
+documentation = "https://docs.rs/enum_like"
 
 [dependencies]
