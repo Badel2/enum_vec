@@ -129,43 +129,50 @@ macro_rules! make_benches {
     }
 }
 
-make_benches! {
-    EnumVec<T2> {
-        bench_push => gen_push(SPILLED_SIZE as _),
-        bench_push_small => gen_push(VEC_SIZE as _),
-        bench_insert => gen_insert(SPILLED_SIZE as _),
-        bench_insert_small => gen_insert(VEC_SIZE as _),
-        bench_remove => gen_remove(SPILLED_SIZE as _),
-        bench_remove_small => gen_remove(VEC_SIZE as _),
-        bench_extend => gen_extend(SPILLED_SIZE as _),
-        bench_extend_small => gen_extend(VEC_SIZE as _),
-        //bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
-        //bench_from_slice_small => gen_from_slice(VEC_SIZE as _),
-        //bench_extend_from_slice => gen_extend_from_slice(SPILLED_SIZE as _),
-        //bench_extend_from_slice_small => gen_extend_from_slice(VEC_SIZE as _),
-        bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
-        bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
-        bench_pushpop => gen_pushpop(),
+
+pub mod enum_vec2 {
+    use super::*;
+    make_benches! {
+        EnumVec<T2> {
+            bench_push => gen_push(SPILLED_SIZE as _),
+            bench_push_small => gen_push(VEC_SIZE as _),
+            bench_insert => gen_insert(SPILLED_SIZE as _),
+            bench_insert_small => gen_insert(VEC_SIZE as _),
+            bench_remove => gen_remove(SPILLED_SIZE as _),
+            bench_remove_small => gen_remove(VEC_SIZE as _),
+            bench_extend => gen_extend(SPILLED_SIZE as _),
+            bench_extend_small => gen_extend(VEC_SIZE as _),
+            //bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
+            //bench_from_slice_small => gen_from_slice(VEC_SIZE as _),
+            //bench_extend_from_slice => gen_extend_from_slice(SPILLED_SIZE as _),
+            //bench_extend_from_slice_small => gen_extend_from_slice(VEC_SIZE as _),
+            bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
+            bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
+            bench_pushpop => gen_pushpop(),
+        }
     }
 }
 
-make_benches! {
-    Vec<T2> {
-        bench_push_vec => gen_push(SPILLED_SIZE as _),
-        bench_push_vec_small => gen_push(VEC_SIZE as _),
-        bench_insert_vec => gen_insert(SPILLED_SIZE as _),
-        bench_insert_vec_small => gen_insert(VEC_SIZE as _),
-        bench_remove_vec => gen_remove(SPILLED_SIZE as _),
-        bench_remove_vec_small => gen_remove(VEC_SIZE as _),
-        bench_extend_vec => gen_extend(SPILLED_SIZE as _),
-        bench_extend_vec_small => gen_extend(VEC_SIZE as _),
-        //bench_from_slice_vec => gen_from_slice(SPILLED_SIZE as _),
-        //bench_from_slice_vec_small => gen_from_slice(VEC_SIZE as _),
-        //bench_extend_from_slice_vec => gen_extend_from_slice(SPILLED_SIZE as _),
-        //bench_extend_from_slice_vec_small => gen_extend_from_slice(VEC_SIZE as _),
-        bench_macro_from_elem_vec => gen_from_elem(SPILLED_SIZE as _),
-        bench_macro_from_elem_vec_small => gen_from_elem(VEC_SIZE as _),
-        bench_pushpop_vec => gen_pushpop(),
+pub mod normal_vec2 {
+    use super::*;
+    make_benches! {
+        Vec<T2> {
+            bench_push => gen_push(SPILLED_SIZE as _),
+            bench_push_small => gen_push(VEC_SIZE as _),
+            bench_insert => gen_insert(SPILLED_SIZE as _),
+            bench_insert_small => gen_insert(VEC_SIZE as _),
+            bench_remove => gen_remove(SPILLED_SIZE as _),
+            bench_remove_small => gen_remove(VEC_SIZE as _),
+            bench_extend => gen_extend(SPILLED_SIZE as _),
+            bench_extend_small => gen_extend(VEC_SIZE as _),
+            //bench_from_slice_vec => gen_from_slice(SPILLED_SIZE as _),
+            //bench_from_slice_vec_small => gen_from_slice(VEC_SIZE as _),
+            //bench_extend_from_slice_vec => gen_extend_from_slice(SPILLED_SIZE as _),
+            //bench_extend_from_slice_vec_small => gen_extend_from_slice(VEC_SIZE as _),
+            bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
+            bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
+            bench_pushpop => gen_pushpop(),
+        }
     }
 }
 
