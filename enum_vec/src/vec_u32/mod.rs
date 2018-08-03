@@ -325,6 +325,7 @@ impl<T: EnumLike> EnumVec<T> {
     /// use enum_vec::EnumVec;
     ///
     /// let mut ev = EnumVec::from_elem((true, false), 1000);
+    /// assert_eq!(ev.len(), 1000);
     /// assert!(ev.iter().all(|x| x == (true, false)));
     /// ```
     fn extend_with_value(&mut self, value: T, count: usize) {
@@ -337,8 +338,9 @@ impl<T: EnumLike> EnumVec<T> {
                                 (self.len() % Self::ELEMS_PER_BLOCK);
             self.extend(repeat(value).take(to_insert_first));
             let count_end = count - to_insert_first;
-            let to_insert_last = Self::ELEMS_PER_BLOCK -
-                                (count_end % Self::ELEMS_PER_BLOCK);
+            let count_blocks = count_end / Self::ELEMS_PER_BLOCK;
+            let to_insert_mid = count_blocks * Self::ELEMS_PER_BLOCK;
+            let to_insert_last = count - (to_insert_first + to_insert_mid);
 
             let d = value.to_discr();
             let mut block_value = d as StorageBlock;
@@ -350,7 +352,6 @@ impl<T: EnumLike> EnumVec<T> {
                 i *= 2;
             }
 
-            let count_blocks = count_end / Self::ELEMS_PER_BLOCK;
             let old_len = self.len();
 
             // Set storage len to self.len() / Self::ELEMS_PER_BLOCK,
