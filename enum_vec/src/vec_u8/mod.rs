@@ -84,7 +84,7 @@ impl<T: EnumLike> EnumVec<T> {
     }
     pub fn with_capacity(n: usize) -> Self {
         Self {
-            storage: Vec::with_capacity(Self::blocks_for_elements(n)),
+            storage: Storage::with_capacity(Self::blocks_for_elements(n)),
             num_elements: 0,
             phantom: PhantomData,
         }
@@ -125,7 +125,13 @@ impl<T: EnumLike> EnumVec<T> {
             .expect("capacity overflow");
         if desired_cap > self.capacity() {
             // Optimistically reserve more than is needed
-            self.storage.reserve(1 + additional / Self::ELEMS_PER_BLOCK);
+            // And zero-out the storage, to enable get_raw and set_raw
+            // TODO: should we? reserve is not meant to change the len
+            // the problem is that set_len does not set the len of the
+            // storage... but that would be too inefficient, it may be
+            // better to just add calls to fix_storage() in clone()
+            //let old_slen = self.storage.len();
+            self.storage.resize(desired_cap / Self::ELEMS_PER_BLOCK + 1, 0);
         }
     }
     /// Shrinks the capacity as much as possible.
@@ -220,6 +226,14 @@ impl<T: EnumLike> EnumVec<T> {
             self.set_len(i_set);
         }
     }
+    /// Push an element to the end of the vector.
+    /// ```
+    /// use enum_vec::vec_u8::EnumVec;
+    ///
+    /// let mut a: EnumVec<Option<()>> = vec![None].into();
+    /// let mut b = a.clone();
+    /// b.push(None);
+    /// // FIXME: the push segfaults:
     pub fn push(&mut self, x: T) {
         self.grow_if_needed();
         let idx = self.num_elements;
@@ -238,6 +252,24 @@ impl<T: EnumLike> EnumVec<T> {
             Some(x)
         }
     }
+    /// Appends all the elements from `other` into `self`, leaving
+    /// `other` empty.
+    /// This can be more efficient than using `extend` when the internal
+    /// storage is block-aligned. For example when each element is 4-bits wide
+    /// and the storage is a u32, it is block-aligned when it has 8*k elements.
+    /// Also, it doesn't have to map all the elements from `T` to discr.
+    ///
+    /// ```
+    /// use enum_vec::vec_u8::EnumVec;
+    ///
+    /// let mut a: EnumVec<_> = vec![None, None, Some(())].into();
+    /// let mut b = a.clone();
+    /// b.push(None);
+    /// a.append(&mut b);
+    /// assert_eq!(a.get(6), Some(None));
+    /// assert_eq!(a.len(), 3+4);
+    /// assert_eq!(b.len(), 0);
+    /// ```
     pub fn append(&mut self, other: &mut Self) {
         let other_len = other.len();
         let self_len = self.len();
@@ -253,10 +285,14 @@ impl<T: EnumLike> EnumVec<T> {
         } else {
             // Otherwise, just push every element
             self.reserve(other_len);
-            self.num_elements += other_len;
-            for i in 0..other_len {
-                self.set_raw(self_len + i, other.get_raw(i).unwrap());
+            unsafe { // We just reserved space
+                self.set_len(self_len + other_len);
+                for i in 0..other_len {
+                    self.set_raw_unchecked(self_len + i, other.get_raw_unchecked(i));
+                }
             }
+
+            other.clear();
         }
     }
     /// Sets the length to zero, removing all the elements.
@@ -531,6 +567,8 @@ impl<T: EnumLike> EnumVec<T> {
     }
 }
 
+// TODO: impl Clone and fix storage
+
 impl<T: EnumLike + fmt::Debug> fmt::Debug for EnumVec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
@@ -540,7 +578,7 @@ impl<T: EnumLike + fmt::Debug> fmt::Debug for EnumVec<T> {
 impl<T: EnumLike> Default for EnumVec<T> {
     fn default() -> Self {
         Self {
-            storage: Vec::new(),
+            storage: Storage::new(),
             num_elements: 0,
             phantom: PhantomData,
         }
@@ -549,9 +587,17 @@ impl<T: EnumLike> Default for EnumVec<T> {
 
 impl<T: EnumLike> Extend<T> for EnumVec<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        let iter = iter.into_iter();
-        self.reserve(iter.size_hint().0);
+        let mut iter = iter.into_iter();
+        let iter_len = iter.size_hint().0;
+        let self_len = self.len();
         // We could resize and use set_raw_unchecked, for speed
+        self.reserve(iter_len);
+        self.num_elements += iter_len;
+        for i in 0..iter_len {
+            self.set(self_len + i, iter.next().unwrap());
+        }
+
+        // Push the remaining elements, if any
         for elem in iter {
             self.push(elem);
         }
@@ -1056,5 +1102,16 @@ mod tests {
         let d = enum_vec![ABC::C; 10];
 
         assert_eq!(c, d.to_vec());
+    }
+
+    #[test]
+    fn clone_push_segfault() {
+        let a: EnumVec<bool> = vec![false].into();
+        let mut b = a.clone();
+        // This push segfaults if the storage is malformed: for
+        // example if we resize and set_raw_unchecked, but the storage
+        // has len = 0. In that case the clone will not create a new storage,
+        // and the push will segfault when trying to access an invalid pointer.
+        b.push(true);
     }
 }
