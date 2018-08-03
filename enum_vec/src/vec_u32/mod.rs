@@ -67,9 +67,7 @@ impl<T: EnumLike> EnumVec<T> {
         + Self::ERROR_TOO_MANY_VARIANTS
         + Self::ERROR_ZERO_SIZED;
 
-    const ERROR_TOO_MANY_VARIANTS: usize = 0
-        // Error: cannot use EnumVec for 2^32 variants (because of 32 bit storage)
-        - ((T::NUM_VARIANTS as u64 >= (1 << STORAGE_BLOCK_SIZE) ) as usize);
+    const ERROR_TOO_MANY_VARIANTS: usize = 0 /*Error: this type has too many variants for this storage, try using enum_vec::vec_u64::EnumVec*/ - ((T::NUM_VARIANTS as u64 >= (1 << STORAGE_BLOCK_SIZE) ) as usize); 
 
     // We could force zero sized types to use 1 bit, but that would be a waste
     const ERROR_ZERO_SIZED: usize = 0
@@ -95,7 +93,7 @@ impl<T: EnumLike> EnumVec<T> {
     /// allocating new memory.
     ///
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let ev = EnumVec::<bool>::with_capacity(53);
     /// assert!(ev.capacity() >= 53);
@@ -114,7 +112,7 @@ impl<T: EnumLike> EnumVec<T> {
     }
     /// Reserves capacity for at least `additional` more elements.
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let mut ev: EnumVec<Option<()>> = vec![None, None, None].into();
     /// ev.reserve(100);
@@ -149,7 +147,7 @@ impl<T: EnumLike> EnumVec<T> {
     /// This is accomplished by swapping the desired element with
     /// the last element, and then calling `pop()`.
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let mut ev: EnumVec<bool> = vec![true, true, true, false, false].into();
     /// ev.swap_remove(0);
@@ -193,7 +191,7 @@ impl<T: EnumLike> EnumVec<T> {
     }
     /// Retains only the elements specified by the predicate
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let mut v: EnumVec<(bool, bool)> = vec![(true, true), (false, false), (true, false),
     ///     (false, true)].into();
@@ -263,7 +261,7 @@ impl<T: EnumLike> EnumVec<T> {
     }
     /// Sets the length to zero, removing all the elements.
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let mut ev = EnumVec::new();
     /// ev.push(Some(false));
@@ -322,7 +320,7 @@ impl<T: EnumLike> EnumVec<T> {
 
     /// This is the equivalent to a memset
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let mut ev = EnumVec::from_elem((true, false), 1000);
     /// assert_eq!(ev.len(), 1000);
@@ -470,7 +468,7 @@ impl<T: EnumLike> EnumVec<T> {
     /// Apply a function to each element in place, this is a substitute to
     /// for loops:
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let mut v = vec![true, false, true];
     /// for x in v.iter_mut() {
@@ -501,7 +499,7 @@ impl<T: EnumLike> EnumVec<T> {
 
     /// Copies `self` into a plain `Vec`.
     /// ```
-    /// use enum_vec::EnumVec;
+    /// use enum_vec::vec_u32::EnumVec;
     ///
     /// let mut ev = EnumVec::new();
     /// ev.push(true);
