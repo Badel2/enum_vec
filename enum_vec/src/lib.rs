@@ -185,6 +185,10 @@ impl<T: EnumLike> EnumVec<T> {
     }
     /// Insert and remove need a better implementation
     pub fn insert(&mut self, index: usize, element: T) {
+        // TODO: just do a bitshift: when inserting at zero, if each storage
+        // location holds 16 2-bit elements, then save the element at index
+        // 15, do a bitshift by 2, write the new element at index 0, and
+        // fix the next block.
         // Sorry, I was lazy, we just push and bubblesort the element into the
         // desired position
         let mut i = self.len();
@@ -326,15 +330,65 @@ impl<T: EnumLike> EnumVec<T> {
     }
 
     pub fn resize(&mut self, new_len: usize, value: T)
-    where
-        T: Clone,
     {
         let len = self.len();
 
         if new_len > len {
-            self.extend(std::iter::repeat(value).take(new_len - len));
+            self.extend_with_value(value, new_len - len);
         } else {
             self.truncate(new_len);
+        }
+    }
+
+    /// This is the equivalent to a memset
+    /// ```
+    /// use enum_vec::EnumVec;
+    ///
+    /// let mut ev = EnumVec::from_elem((true, false), 1000);
+    /// assert!(ev.iter().all(|x| x == (true, false)));
+    /// ```
+    fn extend_with_value(&mut self, value: T, count: usize) {
+        if count <= 4 * Self::ELEMS_PER_BLOCK {
+            // Slow path, the overhead is not worth it
+            self.extend(std::iter::repeat(value).take(count));
+        } else {
+            // First fill out the last storage block:
+            let to_insert_first = Self::ELEMS_PER_BLOCK -
+                                (self.len() % Self::ELEMS_PER_BLOCK);
+            self.extend(std::iter::repeat(value).take(to_insert_first));
+            let count_end = count - to_insert_first;
+            let to_insert_last = Self::ELEMS_PER_BLOCK -
+                                (count_end % Self::ELEMS_PER_BLOCK);
+
+            let d = value.to_discr();
+            let mut block_value = d as u32;
+            let mut i = Self::BITS_PER_ELEM;
+            while i < 32 {
+                block_value |= block_value << i;
+                i *= 2;
+            }
+
+            let count_blocks = count_end / Self::ELEMS_PER_BLOCK;
+            let old_len = self.len();
+
+            // Set storage len to self.len() / Self::ELEMS_PER_BLOCK,
+            // so pushing to the enumvec is equivalent to pushing to storage
+            self.fix_storage();
+            self.storage.reserve(count_blocks + (to_insert_last > 0) as usize);
+
+            // Now fill the itermediate blocks using memcpy, this is
+            // the optimization
+            for _ in 0..count_blocks {
+                let storage_len = self.storage.len();
+                self.storage.resize(storage_len + count_blocks, block_value);
+            }
+
+            unsafe {
+                self.set_len(old_len + count_blocks * Self::ELEMS_PER_BLOCK);
+            }
+
+            // Finally fill out the remaining elements
+            self.extend(std::iter::repeat(value).take(to_insert_last));
         }
     }
 
@@ -480,21 +534,17 @@ impl<T: EnumLike> EnumVec<T> {
     }
 
     pub fn from_elem(x: T, n: usize) -> Self
-    where
-        T: Clone,
     {
         let mut v = EnumVec::new();
-        v.resize(n, x);
+        v.extend_with_value(x, n);
 
         v
     }
 
     pub fn from_slice(x: &[T]) -> Self
-    where
-        T: Clone,
     {
         let mut v = EnumVec::new();
-        v.extend(x.iter().map(|a| a.clone()));
+        v.extend(x.iter().cloned());
 
         v
     }
