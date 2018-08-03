@@ -3,6 +3,8 @@
 //! A vector which efficiently stores enum variants.
 
 extern crate enum_like;
+#[cfg(feature = "smallvec")]
+extern crate smallvec;
 
 /// Not sure if this is needed
 pub use enum_like::*;
@@ -34,3 +36,7 @@ pub use vec_u32::EnumVec;
 pub mod vec_u64;
 /// Alternative implementation of `EnumVec` with `Vec<u128>` storage.
 pub mod vec_u128;
+
+#[cfg(feature = "smallvec")]
+/// `SmallEnumVec`
+pub mod smallvec_u32;
