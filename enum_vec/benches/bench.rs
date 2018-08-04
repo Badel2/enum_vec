@@ -44,6 +44,7 @@ use enum_vec::vec_u16::EnumVec as EnumVec16;
 use enum_vec::vec_u32::EnumVec as EnumVec32;
 use enum_vec::vec_u64::EnumVec as EnumVec64;
 use enum_vec::vec_u128::EnumVec as EnumVec128;
+use enum_vec::smallvec_u32::EnumVec as SmallEnumVec32;
 use enum_like::EnumLike;
 
 const VEC_SIZE: usize = 16;
@@ -70,7 +71,7 @@ trait Vector<T>: Extend<T> {
 
 impl<T: Copy + EnumLike> Vector<T> for Vec<T> {
     fn new() -> Self {
-        Self::with_capacity(VEC_SIZE)
+        vec![]
     }
 
     fn push(&mut self, val: T) {
@@ -98,154 +99,45 @@ impl<T: Copy + EnumLike> Vector<T> for Vec<T> {
     }
 }
 
-impl<T: Copy + EnumLike> Vector<T> for EnumVec8<T> {
-    fn new() -> Self {
-        Self::new()
-    }
+macro_rules! impl_vector {
+    ($( $typ:ty ),*) => {
+        $(
+            impl<T: Copy + EnumLike> Vector<T> for $typ {
+                fn new() -> Self {
+                    Self::new()
+                }
 
-    fn push(&mut self, val: T) {
-        self.push(val)
-    }
+                fn push(&mut self, val: T) {
+                    self.push(val)
+                }
 
-    fn pop(&mut self) -> Option<T> {
-        self.pop()
-    }
+                fn pop(&mut self) -> Option<T> {
+                    self.pop()
+                }
 
-    fn remove(&mut self, p: usize) -> T {
-        self.remove(p)
-    }
+                fn remove(&mut self, p: usize) -> T {
+                    self.remove(p)
+                }
 
-    fn insert(&mut self, n: usize, val: T) {
-        self.insert(n, val)
-    }
+                fn insert(&mut self, n: usize, val: T) {
+                    self.insert(n, val)
+                }
 
-    fn from_elem(val: T, n: usize) -> Self {
-        Self::from_elem(val, n)
-    }
+                fn from_elem(val: T, n: usize) -> Self {
+                    Self::from_elem(val, n)
+                }
 
-    fn from_slice(val: &[T]) -> Self {
-        Self::from_slice(val)
+                fn from_slice(val: &[T]) -> Self {
+                    Self::from_slice(val)
+                }
+            }
+        )*
     }
 }
 
-impl<T: Copy + EnumLike> Vector<T> for EnumVec16<T> {
-    fn new() -> Self {
-        Self::new()
-    }
-
-    fn push(&mut self, val: T) {
-        self.push(val)
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        self.pop()
-    }
-
-    fn remove(&mut self, p: usize) -> T {
-        self.remove(p)
-    }
-
-    fn insert(&mut self, n: usize, val: T) {
-        self.insert(n, val)
-    }
-
-    fn from_elem(val: T, n: usize) -> Self {
-        Self::from_elem(val, n)
-    }
-
-    fn from_slice(val: &[T]) -> Self {
-        Self::from_slice(val)
-    }
-}
-
-impl<T: Copy + EnumLike> Vector<T> for EnumVec32<T> {
-    fn new() -> Self {
-        Self::new()
-    }
-
-    fn push(&mut self, val: T) {
-        self.push(val)
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        self.pop()
-    }
-
-    fn remove(&mut self, p: usize) -> T {
-        self.remove(p)
-    }
-
-    fn insert(&mut self, n: usize, val: T) {
-        self.insert(n, val)
-    }
-
-    fn from_elem(val: T, n: usize) -> Self {
-        Self::from_elem(val, n)
-    }
-
-    fn from_slice(val: &[T]) -> Self {
-        Self::from_slice(val)
-    }
-}
-
-impl<T: Copy + EnumLike> Vector<T> for EnumVec64<T> {
-    fn new() -> Self {
-        Self::new()
-    }
-
-    fn push(&mut self, val: T) {
-        self.push(val)
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        self.pop()
-    }
-
-    fn remove(&mut self, p: usize) -> T {
-        self.remove(p)
-    }
-
-    fn insert(&mut self, n: usize, val: T) {
-        self.insert(n, val)
-    }
-
-    fn from_elem(val: T, n: usize) -> Self {
-        Self::from_elem(val, n)
-    }
-
-    fn from_slice(val: &[T]) -> Self {
-        Self::from_slice(val)
-    }
-}
-
-impl<T: Copy + EnumLike> Vector<T> for EnumVec128<T> {
-    fn new() -> Self {
-        Self::new()
-    }
-
-    fn push(&mut self, val: T) {
-        self.push(val)
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        self.pop()
-    }
-
-    fn remove(&mut self, p: usize) -> T {
-        self.remove(p)
-    }
-
-    fn insert(&mut self, n: usize, val: T) {
-        self.insert(n, val)
-    }
-
-    fn from_elem(val: T, n: usize) -> Self {
-        Self::from_elem(val, n)
-    }
-
-    fn from_slice(val: &[T]) -> Self {
-        Self::from_slice(val)
-    }
+impl_vector! {
+    EnumVec8<T>, EnumVec16<T>, EnumVec32<T>, EnumVec64<T>, EnumVec128<T>,
+    SmallEnumVec32<T>
 }
 
 macro_rules! make_benches {
@@ -259,11 +151,13 @@ macro_rules! make_benches {
     }
 }
 
-
-pub mod enum_vec8_2 {
+macro_rules! make_make_benches {
+    ($( $typ:ty => $mod:ident ),*) => {
+        $(
+pub mod $mod {
     use super::*;
     make_benches! {
-        EnumVec8<T2> {
+        $typ {
             bench_push => gen_push(SPILLED_SIZE as _),
             bench_push_small => gen_push(VEC_SIZE as _),
             bench_insert => gen_insert(SPILLED_SIZE as _),
@@ -288,186 +182,25 @@ pub mod enum_vec8_2 {
     }
 
     fn iter_all<V: Vector<T2>>(n: usize, b: &mut Bencher) {
-        let v: EnumVec8<T2> = (0..n as u64).map(|x| x.into()).collect();
+        let v: $typ = (0..n as u64).map(|x| x.into()).collect();
         b.iter(|| {
             v.iter().fold(0, |sum, val| sum + val.to_discr())
         });
     }
 }
-
-pub mod enum_vec16_2 {
-    use super::*;
-    make_benches! {
-        EnumVec16<T2> {
-            bench_push => gen_push(SPILLED_SIZE as _),
-            bench_push_small => gen_push(VEC_SIZE as _),
-            bench_insert => gen_insert(SPILLED_SIZE as _),
-            bench_insert_small => gen_insert(VEC_SIZE as _),
-            bench_insert_at_zero => gen_insert_at_zero(SPILLED_SIZE as _),
-            bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
-            bench_remove => gen_remove(SPILLED_SIZE as _),
-            bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
-            bench_extend => gen_extend(SPILLED_SIZE as _),
-            bench_extend_small => gen_extend(VEC_SIZE as _),
-            bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
-            bench_from_slice_small => gen_from_slice(VEC_SIZE as _),
-            //bench_extend_from_slice => gen_extend_from_slice(SPILLED_SIZE as _),
-            //bench_extend_from_slice_small => gen_extend_from_slice(VEC_SIZE as _),
-            bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
-            bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
-            bench_pushpop => gen_pushpop(),
-            bench_iter_all => iter_all(SPILLED_SIZE as _),
-        }
-    }
-
-    fn iter_all<V: Vector<T2>>(n: usize, b: &mut Bencher) {
-        let v: EnumVec16<T2> = (0..n as u64).map(|x| x.into()).collect();
-        b.iter(|| {
-            v.iter().fold(0, |sum, val| sum + val.to_discr())
-        });
+            
+        )*
     }
 }
 
-pub mod enum_vec32_2 {
-    use super::*;
-    make_benches! {
-        EnumVec32<T2> {
-            bench_push => gen_push(SPILLED_SIZE as _),
-            bench_push_small => gen_push(VEC_SIZE as _),
-            bench_insert => gen_insert(SPILLED_SIZE as _),
-            bench_insert_small => gen_insert(VEC_SIZE as _),
-            bench_insert_at_zero => gen_insert_at_zero(SPILLED_SIZE as _),
-            bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
-            bench_remove => gen_remove(SPILLED_SIZE as _),
-            bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
-            bench_extend => gen_extend(SPILLED_SIZE as _),
-            bench_extend_small => gen_extend(VEC_SIZE as _),
-            bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
-            bench_from_slice_small => gen_from_slice(VEC_SIZE as _),
-            //bench_extend_from_slice => gen_extend_from_slice(SPILLED_SIZE as _),
-            //bench_extend_from_slice_small => gen_extend_from_slice(VEC_SIZE as _),
-            bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
-            bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
-            bench_pushpop => gen_pushpop(),
-            bench_iter_all => iter_all(SPILLED_SIZE as _),
-        }
-    }
-
-    fn iter_all<V: Vector<T2>>(n: usize, b: &mut Bencher) {
-        let v: EnumVec32<T2> = (0..n as u64).map(|x| x.into()).collect();
-        b.iter(|| {
-            v.iter().fold(0, |sum, val| sum + val.to_discr())
-        });
-    }
-}
-
-pub mod enum_vec64_2 {
-    use super::*;
-    make_benches! {
-        EnumVec64<T2> {
-            bench_push => gen_push(SPILLED_SIZE as _),
-            bench_push_small => gen_push(VEC_SIZE as _),
-            bench_insert => gen_insert(SPILLED_SIZE as _),
-            bench_insert_small => gen_insert(VEC_SIZE as _),
-            bench_insert_at_zero => gen_insert_at_zero(SPILLED_SIZE as _),
-            bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
-            bench_remove => gen_remove(SPILLED_SIZE as _),
-            bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
-            bench_extend => gen_extend(SPILLED_SIZE as _),
-            bench_extend_small => gen_extend(VEC_SIZE as _),
-            bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
-            bench_from_slice_small => gen_from_slice(VEC_SIZE as _),
-            //bench_extend_from_slice => gen_extend_from_slice(SPILLED_SIZE as _),
-            //bench_extend_from_slice_small => gen_extend_from_slice(VEC_SIZE as _),
-            bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
-            bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
-            bench_pushpop => gen_pushpop(),
-            bench_iter_all => iter_all(SPILLED_SIZE as _),
-        }
-    }
-
-    fn iter_all<V: Vector<T2>>(n: usize, b: &mut Bencher) {
-        let v: EnumVec64<T2> = (0..n as u64).map(|x| x.into()).collect();
-        b.iter(|| {
-            v.iter().fold(0, |sum, val| sum + val.to_discr())
-        });
-    }
-}
-
-pub mod enum_vec128_2 {
-    use super::*;
-    make_benches! {
-        EnumVec128<T2> {
-            bench_push => gen_push(SPILLED_SIZE as _),
-            bench_push_small => gen_push(VEC_SIZE as _),
-            bench_insert => gen_insert(SPILLED_SIZE as _),
-            bench_insert_small => gen_insert(VEC_SIZE as _),
-            bench_insert_at_zero => gen_insert_at_zero(SPILLED_SIZE as _),
-            bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
-            bench_remove => gen_remove(SPILLED_SIZE as _),
-            bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
-            bench_extend => gen_extend(SPILLED_SIZE as _),
-            bench_extend_small => gen_extend(VEC_SIZE as _),
-            bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
-            bench_from_slice_small => gen_from_slice(VEC_SIZE as _),
-            //bench_extend_from_slice => gen_extend_from_slice(SPILLED_SIZE as _),
-            //bench_extend_from_slice_small => gen_extend_from_slice(VEC_SIZE as _),
-            bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
-            bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
-            bench_pushpop => gen_pushpop(),
-            bench_iter_all => iter_all(SPILLED_SIZE as _),
-        }
-    }
-
-    fn iter_all<V: Vector<T2>>(n: usize, b: &mut Bencher) {
-        let v: EnumVec128<T2> = (0..n as u64).map(|x| x.into()).collect();
-        b.iter(|| {
-            v.iter().fold(0, |sum, val| sum + val.to_discr())
-        });
-    }
-}
-
-pub mod normal_vec2 {
-    use super::*;
-    make_benches! {
-        Vec<T2> {
-            bench_push => gen_push(SPILLED_SIZE as _),
-            bench_push_small => gen_push(VEC_SIZE as _),
-            bench_insert => gen_insert(SPILLED_SIZE as _),
-            bench_insert_small => gen_insert(VEC_SIZE as _),
-            bench_insert_at_zero => gen_insert_at_zero(SPILLED_SIZE as _),
-            bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
-            bench_remove => gen_remove(SPILLED_SIZE as _),
-            bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
-            bench_extend => gen_extend(SPILLED_SIZE as _),
-            bench_extend_small => gen_extend(VEC_SIZE as _),
-            bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
-            bench_from_slice_small => gen_from_slice(VEC_SIZE as _),
-            //bench_extend_from_slice_vec => gen_extend_from_slice(SPILLED_SIZE as _),
-            //bench_extend_from_slice_vec_small => gen_extend_from_slice(VEC_SIZE as _),
-            bench_macro_from_elem => gen_from_elem(SPILLED_SIZE as _),
-            bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
-            bench_pushpop => gen_pushpop(),
-            bench_iter_all => iter_all(SPILLED_SIZE as _),
-        }
-    }
-
-    fn iter_all<V: Vector<T2>>(n: usize, b: &mut Bencher) {
-        let v: Vec<T2> = (0..n as u64).map(|x| x.into()).collect();
-        b.iter(|| {
-            v.iter().fold(0, |sum, val| sum + val.to_discr())
-        });
-    }
+make_make_benches! {
+    EnumVec8<T2> => enum_vec8_2,
+    EnumVec16<T2> => enum_vec16_2,
+    EnumVec32<T2> => enum_vec32_2,
+    EnumVec64<T2> => enum_vec64_2,
+    EnumVec128<T2> => enum_vec128_2,
+    SmallEnumVec32<T2> => small_enum_vec32_2,
+    Vec<T2> => normal_vec2
 }
 
 fn gen_push<V: Vector<T2>>(n: u64, b: &mut Bencher) {
