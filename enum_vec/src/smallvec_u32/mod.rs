@@ -5,6 +5,7 @@ use std::iter::{FromIterator, repeat};
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::hash::{Hash, Hasher};
+use std::cmp;
 
 type StorageBlock = u32;
 type Storage = SmallVec<[StorageBlock; 4]>;
@@ -168,31 +169,132 @@ impl<T: EnumLike> EnumVec<T> {
 
         self.pop().unwrap()
     }
-    /// Insert and remove need a better implementation
+    /// Insert an element into an arbitrary position. This operation is very
+    /// expensive, as it must shift all the elements to make space for the new
+    /// one. Prefer using `push()`.
+    ///
+    /// ```
+    /// use enum_vec::smallvec_u32::EnumVec;
+    ///
+    /// let mut ev = EnumVec::new();
+    /// ev.insert(0, true);
+    /// assert_eq!(ev.to_vec(), vec![true]);
+    /// ev.insert(0, false);
+    /// assert_eq!(ev.to_vec(), vec![false, true]);
+    /// ev.insert(1, true);
+    /// assert_eq!(ev.to_vec(), vec![false, true, true]);
+    /// ev.insert(1, false);
+    /// assert_eq!(ev.to_vec(), vec![false, false, true, true]);
+    ///
+    /// let mut ev: EnumVec<_> = vec![false; 127].into();
+    /// ev.insert(0, true);
+    /// ev.insert(0, true);
+    /// assert_eq!((ev.get(0).unwrap(), ev.get(1).unwrap()), (true, true));
+    /// ```
     pub fn insert(&mut self, index: usize, element: T) {
-        // TODO: just do a bitshift: when inserting at zero, if each storage
-        // location holds 16 2-bit elements, then save the element at index
-        // 15, do a bitshift by 2, write the new element at index 0, and
-        // fix the next block.
-        // Sorry, I was lazy, we just push and bubblesort the element into the
-        // desired position
-        let mut i = self.len();
+        let shift_storage = |block: &mut StorageBlock, at_zero: StorageBlock| {
+            let last_bit_offset = (Self::ELEMS_PER_BLOCK - 1) * Self::BITS_PER_ELEM;
+            let last = *block >> last_bit_offset & Self::ELEMENT_MASK;
+            *block <<= Self::BITS_PER_ELEM;
+            *block |= at_zero;
+
+            last
+        };
+
+        // Increment the len by 1 and allocate memory if needed
         self.push(element);
-        while i > index {
-            self.swap(i - 1, i);
-            i -= 1;
+
+        let slow_insert = index % Self::ELEMS_PER_BLOCK;
+        let self_len = self.len();
+        let mut prev = element.to_discr();
+        let mut i = index;
+        // Skip this part if index % Self::ELEMS_PER_BLOCK == 0
+        if slow_insert > 0 {
+            let slow_limit = index - slow_insert + Self::ELEMS_PER_BLOCK;
+            let slow_limit = cmp::min(slow_limit, self_len);
+            while i < slow_limit {
+                unsafe {
+                    // This is safe if we stay inside the same storage
+                    // block, even if we wanted to access i > self.len()
+                    let next = self.get_raw_unchecked(i); 
+                    self.set_raw_unchecked(i, prev);
+                    prev = next;
+                }
+                i += 1;
+            }
+        }
+
+        if i < self.len() {
+            // Shift the storage blocks, including the last block
+            let (ib, _) = Self::block_index(i);
+            let (last_ib, _) = Self::block_index(self.len() - 1);
+            let mut prev = prev as StorageBlock;
+            for i in ib..(last_ib + 1) {
+                prev = shift_storage(&mut self.storage[i], prev);
+            }
         }
     }
+    /// Remove an element from an arbitrary position. This operation is very
+    /// expensive, as it must shift all the elements to fill the hole.
+    /// When preserving the order is not important, consider using
+    /// `swap_remove()`.
+    ///
+    /// ```
+    /// use enum_vec::smallvec_u32::EnumVec;
+    ///
+    /// let mut ev: EnumVec<_> = vec![None; 129].into();
+    /// let item = Some([true, false, true, false]);
+    /// ev.insert(0, item);
+    /// assert_eq!(ev.remove(0), item);
+    /// ev.insert(127, item);
+    /// assert_eq!(ev.remove(127), item);
+    /// ev.insert(127, item);
+    /// ev.insert(128, item);
+    /// assert_eq!(ev.remove(127), item);
+    /// assert_eq!(ev.remove(127), item);
+    /// assert_eq!(ev.remove(127), None);
+    /// assert_eq!(ev.remove(127), None);
+    /// assert_eq!(ev.len(), 127);
+    /// ```
     pub fn remove(&mut self, index: usize) -> T {
         let x = self.get(index).unwrap();
+
+        let shift_storage = |block: &mut StorageBlock, at_zero: StorageBlock| {
+            let last = *block & Self::ELEMENT_MASK;
+            let end_bit_offset = (Self::ELEMS_PER_BLOCK - 1) * Self::BITS_PER_ELEM;
+            *block >>= Self::BITS_PER_ELEM;
+            *block |= at_zero << end_bit_offset;
+
+            last
+        };
+
         let mut i = index;
         let length = self.len() - 1;
-        while i < length {
-            let next = self.get_raw(i + 1).unwrap();
-            self.set_raw(i, next);
+        let block_limit = (1 + Self::block_index(i).0) * Self::ELEMS_PER_BLOCK;
+        let slow_limit = cmp::min(length, block_limit);
+        while i < slow_limit {
+            unsafe { // safe: i + 1 < self.len()
+                let next = self.get_raw_unchecked(i + 1);
+                self.set_raw_unchecked(i, next);
+            }
             i += 1;
         }
+
+        let prev = unsafe {
+            self.get_raw_unchecked(self.len() - 1)
+        };
+
         self.num_elements -= 1;
+
+        if i < self.len() {
+            // Shift the storage blocks, including the last block
+            let (ib, _) = Self::block_index(i);
+            let (last_ib, _) = Self::block_index(self.len() - 1);
+            let mut prev = prev as StorageBlock;
+            for i in (ib..(last_ib + 1)).rev() {
+                prev = shift_storage(&mut self.storage[i], prev);
+            }
+        }
 
         x
     }
