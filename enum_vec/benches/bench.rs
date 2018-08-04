@@ -39,7 +39,6 @@ extern crate enum_vec;
 extern crate test;
 
 use self::test::Bencher;
-use enum_vec::EnumVec;
 use enum_vec::vec_u8::EnumVec as EnumVec8;
 use enum_vec::vec_u16::EnumVec as EnumVec16;
 use enum_vec::vec_u32::EnumVec as EnumVec32;
@@ -273,8 +272,8 @@ pub mod enum_vec8_2 {
             bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
             bench_remove => gen_remove(SPILLED_SIZE as _),
             bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove(VEC_SIZE as _),
+            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
+            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
             bench_extend => gen_extend(SPILLED_SIZE as _),
             bench_extend_small => gen_extend(VEC_SIZE as _),
             bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
@@ -308,8 +307,8 @@ pub mod enum_vec16_2 {
             bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
             bench_remove => gen_remove(SPILLED_SIZE as _),
             bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove(VEC_SIZE as _),
+            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
+            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
             bench_extend => gen_extend(SPILLED_SIZE as _),
             bench_extend_small => gen_extend(VEC_SIZE as _),
             bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
@@ -343,8 +342,8 @@ pub mod enum_vec32_2 {
             bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
             bench_remove => gen_remove(SPILLED_SIZE as _),
             bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove(VEC_SIZE as _),
+            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
+            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
             bench_extend => gen_extend(SPILLED_SIZE as _),
             bench_extend_small => gen_extend(VEC_SIZE as _),
             bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
@@ -378,8 +377,8 @@ pub mod enum_vec64_2 {
             bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
             bench_remove => gen_remove(SPILLED_SIZE as _),
             bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove(VEC_SIZE as _),
+            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
+            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
             bench_extend => gen_extend(SPILLED_SIZE as _),
             bench_extend_small => gen_extend(VEC_SIZE as _),
             bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
@@ -413,8 +412,8 @@ pub mod enum_vec128_2 {
             bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
             bench_remove => gen_remove(SPILLED_SIZE as _),
             bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove(VEC_SIZE as _),
+            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
+            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
             bench_extend => gen_extend(SPILLED_SIZE as _),
             bench_extend_small => gen_extend(VEC_SIZE as _),
             bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
@@ -448,8 +447,8 @@ pub mod normal_vec2 {
             bench_insert_at_zero_small => gen_insert_at_zero(VEC_SIZE as _),
             bench_remove => gen_remove(SPILLED_SIZE as _),
             bench_remove_small => gen_remove(VEC_SIZE as _),
-            bench_remove_at_zero => gen_remove(SPILLED_SIZE as _),
-            bench_remove_at_zero_small => gen_remove(VEC_SIZE as _),
+            bench_remove_at_zero => gen_remove_at_zero(SPILLED_SIZE as _),
+            bench_remove_at_zero_small => gen_remove_at_zero(VEC_SIZE as _),
             bench_extend => gen_extend(SPILLED_SIZE as _),
             bench_extend_small => gen_extend(VEC_SIZE as _),
             bench_from_slice => gen_from_slice(SPILLED_SIZE as _),
@@ -546,7 +545,7 @@ fn gen_remove_at_zero<V: Vector<T2>>(n: usize, b: &mut Bencher) {
     b.iter(|| {
         let mut vec = V::from_elem(T2::C, n as _);
 
-        for x in (0..n - 1).rev() {
+        for _ in (0..n - 1).rev() {
             remove_noinline(&mut vec, 0);
         }
     });
