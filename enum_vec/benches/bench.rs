@@ -51,9 +51,30 @@ const VEC_SIZE: usize = 16;
 const SPILLED_SIZE: usize = 1000;
 
 #[derive(Copy, Clone, Debug, EnumLike)]
-enum T2 { A, B, C, D }
+struct T1(bool);
+#[derive(Copy, Clone, Debug, EnumLike)]
+struct T2(T1, T1);
+#[derive(Copy, Clone, Debug, EnumLike)]
+struct T4(T2, T2);
+#[derive(Copy, Clone, Debug, EnumLike)]
+struct T8(T4, T4);
 
+impl From<u64> for T1 {
+    fn from(n: u64) -> Self {
+        Self::from_discr(n as usize % Self::NUM_VARIANTS)
+    }
+}
 impl From<u64> for T2 {
+    fn from(n: u64) -> Self {
+        Self::from_discr(n as usize % Self::NUM_VARIANTS)
+    }
+}
+impl From<u64> for T4 {
+    fn from(n: u64) -> Self {
+        Self::from_discr(n as usize % Self::NUM_VARIANTS)
+    }
+}
+impl From<u64> for T8 {
     fn from(n: u64) -> Self {
         Self::from_discr(n as usize % Self::NUM_VARIANTS)
     }
@@ -145,7 +166,7 @@ macro_rules! make_benches {
         $(
             #[bench]
             fn $b_name(b: &mut Bencher) {
-                $g_name::<$typ>($($args,)* b)
+                $g_name::<_, $typ>($($args,)* b)
             }
         )*
     }
@@ -181,7 +202,7 @@ pub mod $mod {
         }
     }
 
-    fn iter_all<V: Vector<T2>>(n: usize, b: &mut Bencher) {
+    fn iter_all<T: EnumLike + From<u64>, V: Vector<T>>(n: usize, b: &mut Bencher) {
         let v: $typ = (0..n as u64).map(|x| x.into()).collect();
         b.iter(|| {
             v.iter().fold(0, |sum, val| sum + val.to_discr())
@@ -194,18 +215,42 @@ pub mod $mod {
 }
 
 make_make_benches! {
+    EnumVec8<T1> => enum_vec8_1,
+    EnumVec16<T1> => enum_vec16_1,
+    EnumVec32<T1> => enum_vec32_1,
+    EnumVec64<T1> => enum_vec64_1,
+    EnumVec128<T1> => enum_vec128_1,
+    SmallEnumVec32<T1> => small_enum_vec32_1,
+    Vec<T1> => normal_vec1,
+
     EnumVec8<T2> => enum_vec8_2,
     EnumVec16<T2> => enum_vec16_2,
     EnumVec32<T2> => enum_vec32_2,
     EnumVec64<T2> => enum_vec64_2,
     EnumVec128<T2> => enum_vec128_2,
     SmallEnumVec32<T2> => small_enum_vec32_2,
-    Vec<T2> => normal_vec2
+    Vec<T2> => normal_vec2,
+
+    EnumVec8<T4> => enum_vec8_4,
+    EnumVec16<T4> => enum_vec16_4,
+    EnumVec32<T4> => enum_vec32_4,
+    EnumVec64<T4> => enum_vec64_4,
+    EnumVec128<T4> => enum_vec128_4,
+    SmallEnumVec32<T4> => small_enum_vec32_4,
+    Vec<T4> => normal_vec4,
+
+    EnumVec8<T8> => enum_vec8_8,
+    EnumVec16<T8> => enum_vec16_8,
+    EnumVec32<T8> => enum_vec32_8,
+    EnumVec64<T8> => enum_vec64_8,
+    EnumVec128<T8> => enum_vec128_8,
+    SmallEnumVec32<T8> => small_enum_vec32_8,
+    Vec<T8> => normal_vec8
 }
 
-fn gen_push<V: Vector<T2>>(n: u64, b: &mut Bencher) {
+fn gen_push<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
     #[inline(never)]
-    fn push_noinline<V: Vector<T2>>(vec: &mut V, x: T2) {
+    fn push_noinline<T: EnumLike, V: Vector<T>>(vec: &mut V, x: T) {
         vec.push(x);
     }
 
@@ -218,9 +263,9 @@ fn gen_push<V: Vector<T2>>(n: u64, b: &mut Bencher) {
     });
 }
 
-fn gen_insert<V: Vector<T2>>(n: u64, b: &mut Bencher) {
+fn gen_insert<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
     #[inline(never)]
-    fn insert_noinline<V: Vector<T2>>(vec: &mut V, p: usize, x: T2) {
+    fn insert_noinline<T: EnumLike + From<u64>, V: Vector<T>>(vec: &mut V, p: usize, x: T) {
         vec.insert(p, x)
     }
 
@@ -229,7 +274,7 @@ fn gen_insert<V: Vector<T2>>(n: u64, b: &mut Bencher) {
         // Add one element, with each iteration we insert one before the end.
         // This means that we benchmark the insertion operation and not the
         // time it takes to `ptr::copy` the data.
-        vec.push(T2::A);
+        vec.push(0.into());
         for x in 0..n {
             insert_noinline(&mut vec, x as _, x.into());
         }
@@ -237,9 +282,9 @@ fn gen_insert<V: Vector<T2>>(n: u64, b: &mut Bencher) {
     });
 }
 
-fn gen_insert_at_zero<V: Vector<T2>>(n: u64, b: &mut Bencher) {
+fn gen_insert_at_zero<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
     #[inline(never)]
-    fn insert_noinline<V: Vector<T2>>(vec: &mut V, p: usize, x: T2) {
+    fn insert_noinline<T: EnumLike + From<u64>, V: Vector<T>>(vec: &mut V, p: usize, x: T) {
         vec.insert(p, x)
     }
 
@@ -254,14 +299,14 @@ fn gen_insert_at_zero<V: Vector<T2>>(n: u64, b: &mut Bencher) {
     });
 }
 
-fn gen_remove<V: Vector<T2>>(n: usize, b: &mut Bencher) {
+fn gen_remove<T: EnumLike + From<u64>, V: Vector<T>>(n: usize, b: &mut Bencher) {
     #[inline(never)]
-    fn remove_noinline<V: Vector<T2>>(vec: &mut V, p: usize) -> T2 {
+    fn remove_noinline<T: EnumLike + From<u64>, V: Vector<T>>(vec: &mut V, p: usize) -> T {
         vec.remove(p)
     }
 
     b.iter(|| {
-        let mut vec = V::from_elem(T2::C, n as _);
+        let mut vec = V::from_elem(2.into(), n as _);
 
         for x in (0..n - 1).rev() {
             remove_noinline(&mut vec, x);
@@ -269,14 +314,14 @@ fn gen_remove<V: Vector<T2>>(n: usize, b: &mut Bencher) {
     });
 }
 
-fn gen_remove_at_zero<V: Vector<T2>>(n: usize, b: &mut Bencher) {
+fn gen_remove_at_zero<T: EnumLike + From<u64>, V: Vector<T>>(n: usize, b: &mut Bencher) {
     #[inline(never)]
-    fn remove_noinline<V: Vector<T2>>(vec: &mut V, p: usize) -> T2 {
+    fn remove_noinline<T: EnumLike + From<u64>, V: Vector<T>>(vec: &mut V, p: usize) -> T {
         vec.remove(p)
     }
 
     b.iter(|| {
-        let mut vec = V::from_elem(T2::C, n as _);
+        let mut vec = V::from_elem(2.into(), n as _);
 
         for _ in (0..n - 1).rev() {
             remove_noinline(&mut vec, 0);
@@ -284,8 +329,8 @@ fn gen_remove_at_zero<V: Vector<T2>>(n: usize, b: &mut Bencher) {
     });
 }
 
-fn gen_extend<V: Vector<T2>>(n: u64, b: &mut Bencher) {
-    let v: Vec<T2> = (0..n).map(|x| x.into()).collect();
+fn gen_extend<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
+    let v: Vec<T> = (0..n).map(|x| x.into()).collect();
     b.iter(|| {
         let mut vec = V::new();
         vec.extend(v.clone());
@@ -293,17 +338,17 @@ fn gen_extend<V: Vector<T2>>(n: u64, b: &mut Bencher) {
     });
 }
 
-fn gen_from_slice<V: Vector<T2>>(n: u64, b: &mut Bencher) {
-    let v: Vec<T2> = (0..n).map(|x| x.into()).collect();
+fn gen_from_slice<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
+    let v: Vec<T> = (0..n).map(|x| x.into()).collect();
     b.iter(|| {
         let vec = V::from_slice(&v);
         vec
     });
 }
 
-fn gen_pushpop<V: Vector<T2>>(b: &mut Bencher) {
+fn gen_pushpop<T: EnumLike + From<u64>, V: Vector<T>>(b: &mut Bencher) {
     #[inline(never)]
-    fn pushpop_noinline<V: Vector<T2>>(vec: &mut V, x: T2) -> Option<T2> {
+    fn pushpop_noinline<T: EnumLike + From<u64>, V: Vector<T>>(vec: &mut V, x: T) -> Option<T> {
         vec.push(x);
         vec.pop()
     }
@@ -317,9 +362,9 @@ fn gen_pushpop<V: Vector<T2>>(b: &mut Bencher) {
     });
 }
 
-fn gen_from_elem<V: Vector<T2>>(n: usize, b: &mut Bencher) {
+fn gen_from_elem<T: EnumLike + From<u64>, V: Vector<T>>(n: usize, b: &mut Bencher) {
     b.iter(|| {
-        let vec = V::from_elem(T2::C, n);
+        let vec = V::from_elem(2.into(), n);
         vec
     });
 }
