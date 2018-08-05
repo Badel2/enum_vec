@@ -68,7 +68,7 @@ impl<T: EnumLike> EnumVec<T> {
         + Self::ERROR_TOO_MANY_VARIANTS
         + Self::ERROR_ZERO_SIZED;
 
-    const ERROR_TOO_MANY_VARIANTS: usize = 0 /*Error: this type has too many variants for this storage, try using enum_vec::vec_u64::EnumVec*/ - ((T::NUM_VARIANTS as u64 >= (1 << STORAGE_BLOCK_SIZE) ) as usize); 
+    const ERROR_TOO_MANY_VARIANTS: usize = 0 /*Error: this type has too many variants for this storage, try using enum_vec::vec_u64::EnumVec*/ - ((T::NUM_VARIANTS as u64 > (1 << STORAGE_BLOCK_SIZE) ) as usize);
 
     // We could force zero sized types to use 1 bit, but that would be a waste
     const ERROR_ZERO_SIZED: usize = 0
@@ -79,7 +79,8 @@ impl<T: EnumLike> EnumVec<T> {
     //const ZERO_SIZED: bool = Self::BITS_PER_ELEM == 0;
 
     const ELEMS_PER_BLOCK: usize = STORAGE_BLOCK_SIZE / Self::BITS_PER_ELEM;
-    const ELEMENT_MASK: StorageBlock = (1 << Self::BITS_PER_ELEM) - 1;
+    // While wrapping_shl is not const fn, we support at most 64 bits per element
+    const ELEMENT_MASK: StorageBlock = ((1u64 << Self::BITS_PER_ELEM) - 1) as StorageBlock;
     pub fn new() -> Self {
         Default::default()
     }
@@ -118,13 +119,18 @@ impl<T: EnumLike> EnumVec<T> {
     /// let mut ev: EnumVec<Option<()>> = vec![None, None, None].into();
     /// ev.reserve(100);
     /// assert!(ev.capacity() >= 100 + 3);
+    ///
+    /// let mut a: EnumVec<bool> = EnumVec::new();
+    /// a.reserve(1);
+    /// assert_eq!(a.len(), 0);
+    /// assert!(ev.storage().len() > 0);
     /// ```
     pub fn reserve(&mut self, additional: usize) {
         let desired_cap = self
             .len()
             .checked_add(additional)
             .expect("capacity overflow");
-        if desired_cap > self.capacity() {
+        // if desired_cap > self.capacity() {
             // Optimistically reserve more than is needed
             // And zero-out the storage, to enable get_raw and set_raw
             // TODO: should we? reserve is not meant to change the len
@@ -132,8 +138,10 @@ impl<T: EnumLike> EnumVec<T> {
             // storage... but that would be too inefficient, it may be
             // better to just add calls to fix_storage() in clone()
             //let old_slen = self.storage.len();
-            self.storage.resize(desired_cap / Self::ELEMS_PER_BLOCK + 1, 0);
-        }
+        //}
+        // Always resize storage until we can be sure that
+        // self.storage.len() == self.storage.capacity()
+        self.storage.resize(desired_cap / Self::ELEMS_PER_BLOCK + 1, 0);
     }
     /// Shrinks the capacity as much as possible.
     pub fn shrink_to_fit(&mut self) {
@@ -186,9 +194,15 @@ impl<T: EnumLike> EnumVec<T> {
     /// assert_eq!(ev.to_vec(), vec![false, false, true, true]);
     ///
     /// let mut ev: EnumVec<_> = vec![false; 127].into();
+    /// assert_eq!(ev.len(), 127);
+    /// ev.push(true);
+    /// assert_eq!(ev.len(), 127 + 1);
+    /// ev.push(true);
+    /// assert_eq!(ev.len(), 127 + 2);
     /// ev.insert(0, true);
     /// ev.insert(0, true);
     /// assert_eq!((ev.get(0).unwrap(), ev.get(1).unwrap()), (true, true));
+    /// assert_eq!(ev.len(), 127 + 4);
     /// ```
     pub fn insert(&mut self, index: usize, element: T) {
         let shift_storage = |block: &mut StorageBlock, at_zero: StorageBlock| {
@@ -332,10 +346,9 @@ impl<T: EnumLike> EnumVec<T> {
     /// ```
     /// use enum_vec::vec_u32::EnumVec;
     ///
-    /// let mut a: EnumVec<Option<()>> = vec![None].into();
-    /// let mut b = a.clone();
-    /// b.push(None);
-    /// // FIXME: the push segfaults:
+    /// let mut ev: EnumVec<_> = vec![false; 127].into();
+    /// ev.push(true);
+    /// ```
     pub fn push(&mut self, x: T) {
         self.grow_if_needed();
         let idx = self.num_elements;
@@ -660,12 +673,62 @@ impl<T: EnumLike> EnumVec<T> {
         v
     }
 
+    /// ```
+    /// #[macro_use] extern crate enum_vec;
+    /// use enum_vec::vec_u32::EnumVec;
+    ///
+    /// let ev = enum_vec![true, false, false, true];
+    /// assert_eq!(ev.len(), 4);
+    /// let mut a = enum_vec![false; 8];
+    /// a.extend(ev);
+    /// ```
     pub fn from_slice(x: &[T]) -> Self
     {
         let mut v = EnumVec::new();
         v.extend(x.iter().cloned());
 
         v
+    }
+
+    /// Access the internal storage
+    /// ```
+    /// use enum_vec::vec_u32::EnumVec;
+    ///
+    /// let ev: EnumVec<_> = vec![true; 100].into();
+    /// assert_eq!(ev.len(), 100);
+    /// assert!(ev.storage().len() > 0);
+    pub fn storage(&self) -> &Storage {
+        &self.storage
+    }
+
+    /// Access and modify the internal storage.
+    /// This function is unsafe because shrinking the storage
+    /// may lead to reading and writing uninitialized memory.
+    /// ```
+    /// extern crate enum_like;
+    /// extern crate enum_vec;
+    /// use enum_like::EnumLike;
+    /// use enum_vec::vec_u32::EnumVec;
+    ///
+    /// let mut ev: EnumVec<_> = vec![true; 100].into();
+    /// assert_eq!(ev.len(), 100);
+    /// assert!(ev.storage().len() > 0);
+    /// assert_eq!(ev.get(0).unwrap(), true);
+    ///
+    /// unsafe {
+    ///     let s = ev.storage_mut();
+    ///     // We set the first block to 0, which will set it to false:
+    ///     assert_eq!(false.to_discr(), 0);
+    ///     s[0] = 0;
+    /// }
+    ///
+    /// // The number of modified elements depends on
+    /// // the storage size and the element size, but the first element
+    /// // will always be changed
+    /// assert_eq!(ev.get(0).unwrap(), false);
+    /// ```
+    pub unsafe fn storage_mut(&mut self) -> &mut Storage {
+        &mut self.storage
     }
 }
 
@@ -1215,5 +1278,37 @@ mod tests {
         // has len = 0. In that case the clone will not create a new storage,
         // and the push will segfault when trying to access an invalid pointer.
         b.push(true);
+    }
+
+    #[test]
+    fn reserve_modifies_storage() {
+        let mut ev = EnumVec::new();
+        ev.reserve(1);
+        assert_eq!(ev.len(), 0);
+        assert!(ev.storage().len() > 0);
+        ev.push(true);
+        assert_eq!(ev.len(), 1);
+
+        let mut a: EnumVec<bool> = EnumVec::new();
+        unsafe { // This should be equivalent to push()
+            a.reserve(1);
+            // Assuming false == 0
+            a.set_raw_unchecked(0, 0);
+            a.set_len(1);
+        }
+        assert_eq!(a.len(), 1);
+        assert_eq!(a.pop().unwrap(), false);
+    }
+
+    #[test]
+    fn storage_resize() {
+        let mut ev = EnumVec::new();
+        unsafe {
+            let s = ev.storage_mut();
+            assert_eq!(s.len(), 0);
+            s.resize(1, 0);
+            assert_eq!(s.len(), 1);
+        }
+        ev.push(false);
     }
 }
