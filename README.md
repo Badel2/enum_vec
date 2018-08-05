@@ -24,7 +24,7 @@ implemented for any type. The implementation can be automated using the
 Add this to your `Cargo.toml`:
 ```
 [dependencies]
-enum_vec = "0.2"
+enum_vec = "0.3"
 enum_like = "0.2"
 enum_like_derive = "0.1"
 ```
