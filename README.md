@@ -247,27 +247,27 @@ information.
 
 Here is a comparison of `Vec<T>` vs `EnumVec<T>` when `T` requires 2 bits of storage.
 
-(commit c784168716b45fc661f67d3e6f3f7c623ccc4a53)
+(commit f541c0ed56ad9570fd2291ce42d32980d9831a41)
 ```
  name                           normal_vec2 ns/iter  enum_vec32_2 ns/iter  diff ns/iter    diff %  speedup 
- ::bench_extend                 321                  2,325                        2,004   624.30%   x 0.14 
- ::bench_extend_small           45                   88                              43    95.56%   x 0.51 
- ::bench_from_slice             156                  2,142                        1,986  1273.08%   x 0.07 
- ::bench_from_slice_small       26                   58                              32   123.08%   x 0.45 
- ::bench_insert                 5,430                9,972                        4,542    83.65%   x 0.54 
- ::bench_insert_at_zero         11,714               40,131                      28,417   242.59%   x 0.29 
- ::bench_insert_at_zero_small   192                  119                            -73   -38.02%   x 1.61 
- ::bench_insert_small           219                  198                            -21    -9.59%   x 1.11 
- ::bench_iter_all               285                  882                            597   209.47%   x 0.32 
- ::bench_macro_from_elem        30                   2,322                        2,292  7640.00%   x 0.01 
- ::bench_macro_from_elem_small  26                   59                              33   126.92%   x 0.44 
- ::bench_push                   2,877                4,153                        1,276    44.35%   x 0.69 
- ::bench_push_small             151                  83                             -68   -45.03%   x 1.82 
- ::bench_pushpop                2,804                6,182                        3,378   120.47%   x 0.45 
- ::bench_remove                 3,893                9,359                        5,466   140.41%   x 0.42 
- ::bench_remove_at_zero         10,736               66,926                      56,190   523.38%   x 0.16 
- ::bench_remove_at_zero_small   92                   404                            312   339.13%   x 0.23 
- ::bench_remove_small           84                   161                             77    91.67%   x 0.52 
+ ::bench_extend                 604                  7,459                        6,855  1134.93%   x 0.08 
+ ::bench_extend_small           75                   193                            118   157.33%   x 0.39 
+ ::bench_from_slice             243                  5,499                        5,256  2162.96%   x 0.04 
+ ::bench_from_slice_small       45                   130                             85   188.89%   x 0.35 
+ ::bench_insert                 11,038               23,645                      12,607   114.21%   x 0.47 
+ ::bench_insert_at_zero         26,872               67,778                      40,906   152.23%   x 0.40 
+ ::bench_insert_at_zero_small   354                  310                            -44   -12.43%   x 1.14 
+ ::bench_insert_small           417                  443                             26     6.24%   x 0.94 
+ ::bench_iter_all               3,565                8,140                        4,575   128.33%   x 0.44 
+ ::bench_macro_from_elem        93                   3,466                        3,373  3626.88%   x 0.03 
+ ::bench_macro_from_elem_small  44                   135                             91   206.82%   x 0.33 
+ ::bench_push                   7,678                13,493                       5,815    75.74%   x 0.57 
+ ::bench_push_small             291                  251                            -40   -13.75%   x 1.16 
+ ::bench_pushpop                7,966                19,530                      11,564   145.17%   x 0.41 
+ ::bench_remove                 5,906                16,129                      10,223   173.10%   x 0.37 
+ ::bench_remove_at_zero         24,068               107,585                     83,517   347.00%   x 0.22 
+ ::bench_remove_at_zero_small   148                  717                            569   384.46%   x 0.21 
+ ::bench_remove_small           138                  330                            192   139.13%   x 0.42 
 ```
 
 The only reason that some benchmarks are faster is because of reallocation:
@@ -275,6 +275,23 @@ a `Vec` will reallocate when it reaches 1, 2, 4, 8, ... elements but an
 `EnumVec` will reallocate every 32/n, 64/n, ... and since in the benchmark
 n=2 and the number of insertions in "\_small" benchmarks defaults to 16,
 a `Vec` will reallocate 4 times while an `EnumVec` will reallocate 1 time.
+
+To run the benchmarks yourself, download the source code and run:
+
+```
+cargo +nightly bench --features smallvec > bench_log
+cargo benchcmp normal_vec2 enum_vec32_2 bench_log
+```
+
+You will need to install
+[cargo-benchcmp](https://github.com/BurntSushi/cargo-benchcmp)
+to be able to easily compare benchmarks.
+For example, to compare the default 32-bit `EnumVec` with a 8-bit `EnumVec`,
+when dealing with 4-bit elements, run:
+
+```
+cargo benchcmp enum_vec32_4 enum_vec8_4 bench bench_log
+```
 
 # See also
 
