@@ -1,6 +1,6 @@
 [package]
 name = "enum_vec"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
 license = "GPL-3.0+"
 description = """
