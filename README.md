@@ -2,7 +2,7 @@
 Efficiently store a vector of enum variants
 
 [![Crates.io](https://img.shields.io/crates/v/enum_vec.svg)](https://crates.io/crates/enum_vec)
-![Crates.io](https://img.shields.io/crates/l/enum_vec.svg)
+[![License GPLv3](https://img.shields.io/github/license/badel2/enum_vec.svg)](https://github.com/Badel2/enum_vec/blob/master/LICENSE)
 [![Build Status](https://travis-ci.org/Badel2/enum_vec.svg?branch=master)](https://travis-ci.org/Badel2/enum_vec)
 
 [Documentation](https://badel2.github.io/enum_vec/enum_vec/index.html)
