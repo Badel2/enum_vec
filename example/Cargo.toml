@@ -2,6 +2,7 @@
 name = "example"
 version = "0.1.0"
 authors = ["Badel2 <2badel2@gmail.com>"]
+license = "GPL-3.0+"
 
 [dependencies]
 enum_vec = "0.3"
