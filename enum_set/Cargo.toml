@@ -1,0 +1,15 @@
+[package]
+name = "enum_set"
+version = "0.1.0"
+authors = ["Badel2 <2badel2@gmail.com>"]
+license = "GPL-3.0+"
+description = """
+A bit-set indexed by enum variants.
+"""
+repository = "https://github.com/badel2/enum_vec"
+documentation = "https://docs.rs/enum_vec"
+keywords = ["bitvec", "data-structure", "vector"]
+
+[dependencies]
+enum_like = "0.2"
+bit-set = "0.5"
