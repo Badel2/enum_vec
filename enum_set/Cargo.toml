@@ -8,7 +8,7 @@ A bit-set indexed by enum variants.
 """
 repository = "https://github.com/badel2/enum_vec"
 documentation = "https://docs.rs/enum_vec"
-keywords = ["bitvec", "data-structure", "vector"]
+keywords = ["bitset", "data-structure"]
 
 [dependencies]
 enum_like = "0.2"
