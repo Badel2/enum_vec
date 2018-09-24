@@ -2,8 +2,10 @@
 extern crate enum_like_derive;
 extern crate enum_like;
 extern crate enum_vec;
+extern crate enum_set2;
 
 mod bit;
+mod enum_set;
 
 use enum_vec::EnumVec;
 

@@ -192,6 +192,7 @@ impl<E: EnumLike + fmt::Debug> fmt::Debug for EnumSet<E> {
 
 /// Wraps an iterator from the `bit-set` crate, mapping the output from
 /// `usize` to `E: EnumLike`.
+#[derive(Debug)]
 pub struct WrapIter<E: EnumLike, I: Iterator<Item=usize>> {
     inner: I,
     _phantom: PhantomData<E>,
