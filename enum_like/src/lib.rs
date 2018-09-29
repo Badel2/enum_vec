@@ -439,7 +439,7 @@ impl<T: EnumLike> PackedU8<T> {
         }
     }
     /// Return the packed value
-    pub fn value(&self) -> T {
+    pub fn get(self) -> T {
         T::from_discr(self.discr as usize)
     }
 }
@@ -463,10 +463,16 @@ impl<T: EnumLike> PackedU16<T> {
         }
     }
     /// Return the packed value
-    pub fn value(&self) -> T {
+    pub fn get(self) -> T {
         T::from_discr(self.discr as usize)
     }
 }
+
+// How about a `PackedNonZeroU8`:
+// We would need to impl Zeroable for PackedNonZeroU8
+// And map the values to make 0 invalid:
+// let discr = T::to_discr(x) + 1;
+// let x = T::from_discr(x-1);
 
 /// Helper trait to iterate over all the possible values of an enum.
 /// Note: you don't need to implement this trait, it is provided by `EnumLike`.
@@ -900,11 +906,11 @@ mod tests {
     fn packed_u8_u16() {
         let a = false;
         let a_p8 = PackedU8::new(a.clone());
-        assert_eq!(a, a_p8.value());
+        assert_eq!(a, a_p8.get());
 
         let b = ThreeDigits::values().nth(123);
         let b_p16 = PackedU16::new(b.clone());
-        assert_eq!(b, b_p16.value());
+        assert_eq!(b, b_p16.get());
     }
 
     /*
