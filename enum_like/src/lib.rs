@@ -139,33 +139,12 @@ pub unsafe trait EnumLike: Copy {
     /// Convert type to discriminant
     fn to_discr(self) -> usize;
 
-    /// Get type instance from discriminant, assuming that `x` is a valid
-    /// discriminant.
+    /// Get type instance from discriminant
     // We could have a static array with all the instances of
     // the type and just return INSTANCE[x], we could maybe do that with
     // lazy_static but I hope the compiler is smart enough to optimize the
     // match {} into something similar
     fn from_discr(x: usize) -> Self;
-
-
-    /// Convert type to discriminant, checking that the discriminant is valid
-    fn to_discr_checked(self) -> Option<usize> {
-        let x = self.to_discr();
-        if x < Self::NUM_VARIANTS {
-            Some(x)
-        } else {
-            None
-        }
-    }
-
-    /// Get type instance from discriminant
-    fn from_discr_checked(x: usize) -> Option<Self> {
-        if x < Self::NUM_VARIANTS {
-            Some(Self::from_discr(x))
-        } else {
-            None
-        }
-    }
 }
 
 // TODO: impl ! with NUM_VARIANTS = 0
