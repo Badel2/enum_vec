@@ -50,13 +50,13 @@ use enum_like::EnumLike;
 const VEC_SIZE: usize = 16;
 const SPILLED_SIZE: usize = 1000;
 
-#[derive(Copy, Clone, Debug, EnumLike)]
+#[derive(Copy, Clone, Debug, EnumLike, PartialEq)]
 struct T1(bool);
-#[derive(Copy, Clone, Debug, EnumLike)]
+#[derive(Copy, Clone, Debug, EnumLike, PartialEq)]
 struct T2(T1, T1);
-#[derive(Copy, Clone, Debug, EnumLike)]
+#[derive(Copy, Clone, Debug, EnumLike, PartialEq)]
 struct T4(T2, T2);
-#[derive(Copy, Clone, Debug, EnumLike)]
+#[derive(Copy, Clone, Debug, EnumLike, PartialEq)]
 struct T8(T4, T4);
 
 impl From<u64> for T1 {
@@ -88,9 +88,11 @@ trait Vector<T>: Extend<T> {
     fn insert(&mut self, n: usize, val: T);
     fn from_elem(val: T, n: usize) -> Self;
     fn from_slice(val: &[T]) -> Self;
+    fn any(&self, x: T) -> bool;
+    fn all(&self, x: T) -> bool;
 }
 
-impl<T: Copy + EnumLike> Vector<T> for Vec<T> {
+impl<T: Copy + EnumLike + PartialEq> Vector<T> for Vec<T> {
     fn new() -> Self {
         vec![]
     }
@@ -117,6 +119,12 @@ impl<T: Copy + EnumLike> Vector<T> for Vec<T> {
 
     fn from_slice(val: &[T]) -> Self {
         val.into()
+    }
+    fn any(&self, x: T) -> bool {
+        self.iter().any(|&a| a == x)
+    }
+    fn all(&self, x: T) -> bool {
+        self.iter().all(|&a| a == x)
     }
 }
 
@@ -150,6 +158,12 @@ macro_rules! impl_vector {
 
                 fn from_slice(val: &[T]) -> Self {
                     Self::from_slice(val)
+                }
+                fn any(&self, x: T) -> bool {
+                    self.any(x)
+                }
+                fn all(&self, x: T) -> bool {
+                    self.all(x)
                 }
             }
         )*
@@ -199,6 +213,14 @@ pub mod $mod {
             bench_macro_from_elem_small => gen_from_elem(VEC_SIZE as _),
             bench_pushpop => gen_pushpop(),
             bench_iter_all => iter_all(SPILLED_SIZE as _),
+            bench_any => any_x(SPILLED_SIZE as _),
+            bench_any_small => any_x(VEC_SIZE as _),
+            bench_all => all_x(SPILLED_SIZE as _),
+            bench_all_small => all_x(VEC_SIZE as _),
+            bench_any_worst_case => any_worst_case(SPILLED_SIZE as _),
+            bench_any_worst_case_small => any_worst_case(VEC_SIZE as _),
+            bench_all_worst_case => all_worst_case(SPILLED_SIZE as _),
+            bench_all_worst_case_small => all_worst_case(VEC_SIZE as _),
         }
     }
 
@@ -366,6 +388,58 @@ fn gen_from_elem<T: EnumLike + From<u64>, V: Vector<T>>(n: usize, b: &mut Benche
     b.iter(|| {
         let vec = V::from_elem(2.into(), n);
         vec
+    });
+}
+
+fn any_x<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
+    let vall = V::from_elem(2.into(), n as usize);
+    let asdf: Vec<_> = (0..n).map(|x| x.into()).collect();
+    let vany = V::from_slice(&asdf);
+
+    b.iter(|| {
+        let mut count = 0;
+        let x = 2;
+        count += vall.any(x.into()) as i32;
+        count += vany.any(x.into()) as i32;
+        count
+    });
+}
+
+fn any_worst_case<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
+    let vall = V::from_elem(2.into(), n as usize);
+
+    b.iter(|| {
+        let mut count = 0;
+        let x = 1;
+        count += vall.any(x.into()) as i32;
+        assert_eq!(count, 0);
+        count
+    });
+}
+
+fn all_x<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
+    let vall = V::from_elem(2.into(), n as usize);
+    let asdf: Vec<_> = (0..n).map(|x| x.into()).collect();
+    let vany = V::from_slice(&asdf);
+
+    b.iter(|| {
+        let mut count = 0;
+        let x = 2;
+        count += vall.all(x.into()) as i32;
+        count += vany.all(x.into()) as i32;
+        count
+    });
+}
+
+fn all_worst_case<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
+    let vall = V::from_elem(2.into(), n as usize);
+
+    b.iter(|| {
+        let mut count = 0;
+        let x = 2;
+        count += vall.all(x.into()) as i32;
+        assert_eq!(count, 1);
+        count
     });
 }
 

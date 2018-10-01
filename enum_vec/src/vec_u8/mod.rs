@@ -730,6 +730,160 @@ impl<T: EnumLike> EnumVec<T> {
     pub unsafe fn storage_mut(&mut self) -> &mut Storage {
         &mut self.storage
     }
+
+    /// Check whether any of the elements is equal to `x`.
+    /// This method uses arcane bithack magic to test many elements at once.
+    /// ```
+    /// extern crate enum_like;
+    /// extern crate enum_vec;
+    /// use enum_like::EnumLike;
+    /// use enum_vec::vec_u8::EnumVec;
+    ///
+    /// let mut ev: EnumVec<_> = vec![true; 200].into();
+    /// assert_eq!(ev.any(true), true);
+    /// assert_eq!(ev.any(false), false);
+    /// ev.push(true);
+    /// assert_eq!(ev.any(true), true);
+    /// assert_eq!(ev.any(false), false);
+    /// ev.set(0, false);
+    /// assert_eq!(ev.any(false), true);
+    ///
+    /// let mut ev: EnumVec<_> = vec![None; 200].into();
+    /// assert_eq!(ev.any(Some(false)), false);
+    /// assert_eq!(ev.any(Some(true)), false);
+    /// assert_eq!(ev.any(None), true);
+    /// ev.set(1, Some(false));
+    /// assert_eq!(ev.any(Some(false)), true);
+    /// assert_eq!(ev.any(Some(true)), false);
+    /// assert_eq!(ev.any(None), true);
+    /// ev.set(2, Some(true));
+    /// assert_eq!(ev.any(Some(false)), true);
+    /// assert_eq!(ev.any(Some(true)), true);
+    /// assert_eq!(ev.any(None), true);
+    /// ```
+    pub fn any(&self, x: T) -> bool {
+        // This could be magically inserted by LLVM, but I have not seen the
+        // assembly yet, so just to be sure:
+        if self.is_empty() {
+            return false;
+        }
+        let (last_block, last_elem_shift) = Self::block_index(self.len());
+        // Process all the other blocks, which are complete
+
+        // Mask the unused bits to 0. Eg. if BITS_PER_ELEM = 15 and
+        // STORAGE_BLOCK_SIZE = 30, the 2 most significant bits are unused.
+        //let valid_mask = !0 >> (STORAGE_BLOCK_SIZE % Self::BITS_PER_ELEM);
+        // 2^BITS_PER_ELEM - 1
+        let num_variants_p2 = Self::ELEMENT_MASK;
+        // A mask where all the elements have discriminant value of 1
+        let one_mask = (!0 / num_variants_p2) >> (STORAGE_BLOCK_SIZE % Self::BITS_PER_ELEM);
+        // A mask where the highest bit of each element is set to 1
+        let high_mask = one_mask << (Self::BITS_PER_ELEM - 1);
+        // A mask where all the elements have discriminant value of x
+        let x = x.to_discr();
+        let x_mask = x as StorageBlock * one_mask;
+        // For example, if we set bits_per_elem to 4:
+        // one_mask  = 0x11111111;
+        // high_mask = 0x88888888;
+        // x_mask    = 0x33333333; (when x = 3)
+
+        // https://graphics.stanford.edu/~seander/bithacks.html
+        // #define haszero(v) (((v) - 0x01010101UL) & ~(v) & 0x80808080UL)
+        // #define hasvalue(x,n) (haszero((x) ^ (~0UL/255 * (n))))
+        let haszero = |v: StorageBlock| -> bool {
+            ((v.wrapping_sub(one_mask as StorageBlock)) & !v & high_mask) != 0
+        };
+
+        for i in 0..last_block {
+            if haszero(self.storage[i] ^ x_mask) {
+                println!("Has zero fail: {} ^ {}", self.storage[i], x_mask);
+                return true;
+            }
+        }
+
+        // Check last block
+        // This branch can be safely removed, as haszero(0xFFFFFFFF) will return false
+        // So it could be replaced by return haszero(... | last_block_mask)
+        if last_elem_shift != 0 {
+            // Mask which sets the remaining elements to all ones, so they
+            // do not affect the result of haszero
+            let last_block_mask = !0 << (last_elem_shift);
+            if haszero((self.storage[last_block] ^ x_mask) | last_block_mask) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Check whether all of the elements are equal to `x`.
+    /// This method uses arcane bithack magic to test many elements at once.
+    /// ```
+    /// extern crate enum_like;
+    /// extern crate enum_vec;
+    /// use enum_like::EnumLike;
+    /// use enum_vec::vec_u8::EnumVec;
+    ///
+    /// let mut ev: EnumVec<_> = vec![true; 200].into();
+    /// assert_eq!(ev.all(true), true);
+    /// assert_eq!(ev.all(false), false);
+    /// ev.push(true);
+    /// assert_eq!(ev.all(true), true);
+    /// assert_eq!(ev.all(false), false);
+    /// ev.set(0, false);
+    /// assert_eq!(ev.all(true), false);
+    /// assert_eq!(ev.all(false), false);
+    ///
+    /// let mut ev: EnumVec<_> = vec![None; 200].into();
+    /// assert_eq!(ev.all(Some(false)), false);
+    /// assert_eq!(ev.all(Some(true)), false);
+    /// assert_eq!(ev.all(None), true);
+    /// ev.set(1, Some(false));
+    /// assert_eq!(ev.all(Some(false)), false);
+    /// assert_eq!(ev.all(Some(true)), false);
+    /// assert_eq!(ev.all(None), false);
+    /// ```
+    pub fn all(&self, x: T) -> bool {
+        if self.is_empty() {
+            return true;
+        }
+        let (last_block, last_elem_shift) = Self::block_index(self.len());
+
+        // Mask the unused bits to 0. Eg. if BITS_PER_ELEM = 15 and
+        // STORAGE_BLOCK_SIZE = 30, the 2 most significant bits are unused.
+        let valid_mask = !0 >> (STORAGE_BLOCK_SIZE % Self::BITS_PER_ELEM);
+        // 2^BITS_PER_ELEM - 1
+        let num_variants_p2 = Self::ELEMENT_MASK;
+        // A mask where all the elements have discriminant value of 1
+        let one_mask = (!0 / num_variants_p2) >> (STORAGE_BLOCK_SIZE % Self::BITS_PER_ELEM);
+        // A mask where all the elements have discriminant value of x
+        let x = x.to_discr();
+        let x_mask = x as StorageBlock * one_mask;
+        // For example, if we set bits_per_elem to 4:
+        // one_mask  = 0x11111111;
+        // x_mask    = 0x33333333; (when x = 3)
+        // Then checking for all(x == 3) is as easy as storage[i] == x_mask
+
+        // Iterate in reverse order because we may have loaded the last block
+        // in the previous block of code, this way we can reuse the cache.
+        for i in 0..last_block {
+            if self.storage[i] & valid_mask != x_mask {
+                return false;
+            }
+        }
+
+        // Check last block
+        // This branch can be safely removed, but I am not sure about the performance
+        // differences.
+        if last_elem_shift != 0 {
+            let last_block_mask = !(!0 << (last_elem_shift));
+            if self.storage[last_block] & last_block_mask != x_mask & last_block_mask {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 // TODO: impl Clone and fix storage
@@ -1310,5 +1464,57 @@ mod tests {
             assert_eq!(s.len(), 1);
         }
         ev.push(false);
+    }
+
+    #[test]
+    fn any_magic_constants() {
+        for bits_per_elem in 1..=STORAGE_BLOCK_SIZE {
+            // This fails for bits_per_elem = STORAGE_BLOCK_SIZE  
+            let num_variants_p2 = if bits_per_elem == STORAGE_BLOCK_SIZE { !0 } else { (1 << bits_per_elem) - 1 };
+            let elems_per_block = STORAGE_BLOCK_SIZE / bits_per_elem;
+            let wasted_bits = STORAGE_BLOCK_SIZE % bits_per_elem;
+            let mut one_mask = 0;
+            let mut high_mask = 0;
+            for i in 0..elems_per_block {
+                one_mask |= 1 << (i * bits_per_elem);
+                high_mask |= 1 << (((i + 1) * bits_per_elem) - 1);
+            }
+
+            println!("bits_per_elem: {}", bits_per_elem);
+            //assert_eq!(one_mask, 0x01010101);
+            //assert_eq!(high_mask, 0x80808080);
+            assert_eq!(one_mask, (!0/num_variants_p2) >> wasted_bits);
+            assert_eq!(high_mask, one_mask << (bits_per_elem - 1));
+            let haszero = |v: StorageBlock| -> bool {
+                ((v.wrapping_sub(one_mask as StorageBlock)) & !v & high_mask) != 0
+            };
+            assert_eq!(haszero(one_mask), false);
+            assert_eq!(haszero(high_mask), false);
+            assert_eq!(haszero(0), true);
+            assert_eq!(haszero(one_mask - 1), true);
+            assert_eq!(haszero(high_mask << 1), true);
+            assert_eq!(haszero((high_mask << 1).wrapping_sub(one_mask)), false);
+            assert_eq!(haszero((high_mask << 1).wrapping_sub(one_mask)), false);
+            // TODO: test edge cases when wasted_bits != 0
+        }
+    }
+
+    #[test]
+    fn false_positive_any_all() {
+        let mut v = EnumVec::new();
+        for _ in 0..1000 {
+            v.push(None);
+            println!("v.len(): {}", v.len());
+            assert_eq!(v.any(Some(true)), false);
+            assert_eq!(v.all(Some(true)), false);
+            assert_eq!(v.any(Some(false)), false);
+            assert_eq!(v.all(Some(false)), false);
+            assert_eq!(v.any(None), true);
+            assert_eq!(v.all(None), true);
+        }
+
+        let v: EnumVec<_> = vec![None; 1000].into();
+        assert_eq!(v.any(Some(false)), false);
+        assert_eq!(v.any(Some(true)), false);
     }
 }
