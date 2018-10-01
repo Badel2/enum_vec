@@ -249,30 +249,41 @@ information.
 
 Here is a comparison of `Vec<T>` vs `EnumVec<T>` when `T` requires 2 bits of storage.
 
-(commit f541c0ed56ad9570fd2291ce42d32980d9831a41)
+(commit e8db9c883b82e472e9aefb6087be55dafd76b6a0)
 ```
  name                           normal_vec2 ns/iter  enum_vec32_2 ns/iter  diff ns/iter    diff %  speedup 
- ::bench_extend                 604                  7,459                        6,855  1134.93%   x 0.08 
- ::bench_extend_small           75                   193                            118   157.33%   x 0.39 
- ::bench_from_slice             243                  5,499                        5,256  2162.96%   x 0.04 
- ::bench_from_slice_small       45                   130                             85   188.89%   x 0.35 
- ::bench_insert                 11,038               23,645                      12,607   114.21%   x 0.47 
- ::bench_insert_at_zero         26,872               67,778                      40,906   152.23%   x 0.40 
- ::bench_insert_at_zero_small   354                  310                            -44   -12.43%   x 1.14 
- ::bench_insert_small           417                  443                             26     6.24%   x 0.94 
- ::bench_iter_all               3,565                8,140                        4,575   128.33%   x 0.44 
- ::bench_macro_from_elem        93                   3,466                        3,373  3626.88%   x 0.03 
- ::bench_macro_from_elem_small  44                   135                             91   206.82%   x 0.33 
- ::bench_push                   7,678                13,493                       5,815    75.74%   x 0.57 
- ::bench_push_small             291                  251                            -40   -13.75%   x 1.16 
- ::bench_pushpop                7,966                19,530                      11,564   145.17%   x 0.41 
- ::bench_remove                 5,906                16,129                      10,223   173.10%   x 0.37 
- ::bench_remove_at_zero         24,068               107,585                     83,517   347.00%   x 0.22 
- ::bench_remove_at_zero_small   148                  717                            569   384.46%   x 0.21 
- ::bench_remove_small           138                  330                            192   139.13%   x 0.42 
+ ::bench_all                    3                    5                                2    66.67%   x 0.60 
+ ::bench_all_small              3                    5                                2    66.67%   x 0.60 
+ ::bench_all_worst_case         1,308                41                          -1,267   -96.87%  x 31.90 
+ ::bench_all_worst_case_small   19                   5                              -14   -73.68%   x 3.80 
+ ::bench_any                    8                    12                               4    50.00%   x 0.67 
+ ::bench_any_small              8                    12                               4    50.00%   x 0.67 
+ ::bench_any_worst_case         447                  59                            -388   -86.80%   x 7.58 
+ ::bench_any_worst_case_small   11                   6                               -5   -45.45%   x 1.83 
+ ::bench_extend                 419                  3,793                        3,374   805.25%   x 0.11 
+ ::bench_extend_small           48                   108                             60   125.00%   x 0.44 
+ ::bench_from_slice             180                  3,237                        3,057  1698.33%   x 0.06 
+ ::bench_from_slice_small       27                   79                              52   192.59%   x 0.34 
+ ::bench_insert                 8,059                13,154                       5,095    63.22%   x 0.61 
+ ::bench_insert_at_zero         16,898               38,729                      21,831   129.19%   x 0.44 
+ ::bench_insert_at_zero_small   218                  190                            -28   -12.84%   x 1.15 
+ ::bench_insert_small           275                  258                            -17    -6.18%   x 1.07 
+ ::bench_iter_all               2,327                4,948                        2,621   112.63%   x 0.47 
+ ::bench_macro_from_elem        602                  2,435                        1,833   304.49%   x 0.25 
+ ::bench_macro_from_elem_small  28                   80                              52   185.71%   x 0.35 
+ ::bench_push                   4,914                7,097                        2,183    44.42%   x 0.69 
+ ::bench_push_small             181                  130                            -51   -28.18%   x 1.39 
+ ::bench_pushpop                4,390                12,107                       7,717   175.79%   x 0.36 
+ ::bench_remove                 5,261                10,823                       5,562   105.72%   x 0.49 
+ ::bench_remove_at_zero         15,880               68,593                      52,713   331.95%   x 0.23 
+ ::bench_remove_at_zero_small   101                  443                            342   338.61%   x 0.23 
+ ::bench_remove_small           103                  207                            104   100.97%   x 0.50 
 ```
 
-The only reason that some benchmarks are faster is because of reallocation:
+The only methods which are definitely faster than the `Vec` equivalent are
+`all` and `any`, which take advantage of the packing to process many
+elements at once.
+Some other benchmarks appear faster because of reallocation:
 a `Vec` will reallocate when it reaches 1, 2, 4, 8, ... elements but an
 `EnumVec` will reallocate every 32/n, 64/n, ... and since in the benchmark
 n=2 and the number of insertions in "\_small" benchmarks defaults to 16,
