@@ -796,7 +796,6 @@ impl<T: EnumLike> EnumVec<T> {
 
         for i in 0..last_block {
             if haszero(self.storage[i] ^ x_mask) {
-                println!("Has zero fail: {} ^ {}", self.storage[i], x_mask);
                 return true;
             }
         }

@@ -399,8 +399,12 @@ fn any_x<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
     b.iter(|| {
         let mut count = 0;
         let x = 2;
+        // All the elements are 2, so this should be fast
         count += vall.any(x.into()) as i32;
+        assert_eq!(count, 1);
+        // This also should be fast
         count += vany.any(x.into()) as i32;
+        assert_eq!(count, 2);
         count
     });
 }
@@ -411,6 +415,7 @@ fn any_worst_case<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher
     b.iter(|| {
         let mut count = 0;
         let x = 1;
+        // This should scan the entire vector
         count += vall.any(x.into()) as i32;
         assert_eq!(count, 0);
         count
@@ -418,15 +423,15 @@ fn any_worst_case<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher
 }
 
 fn all_x<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher) {
-    let vall = V::from_elem(2.into(), n as usize);
     let asdf: Vec<_> = (0..n).map(|x| x.into()).collect();
     let vany = V::from_slice(&asdf);
 
     b.iter(|| {
         let mut count = 0;
         let x = 2;
-        count += vall.all(x.into()) as i32;
+        // This should return false immediately
         count += vany.all(x.into()) as i32;
+        assert_eq!(count, 0);
         count
     });
 }
@@ -437,6 +442,7 @@ fn all_worst_case<T: EnumLike + From<u64>, V: Vector<T>>(n: u64, b: &mut Bencher
     b.iter(|| {
         let mut count = 0;
         let x = 2;
+        // This should scan the entire vector
         count += vall.all(x.into()) as i32;
         assert_eq!(count, 1);
         count
