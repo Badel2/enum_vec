@@ -1,0 +1,1 @@
+initSidebarItems({"derive":[["EnumLike","Function that implements the `#[derive(EnumLike)]` proc macro"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["EnumVec","A vector which efficiently stores enum variants."],["EnumVecIntoIter","Iterator over EnumVec"],["EnumVecIter","Iterator over &EnumVec"]],"type":[["BitVec","Alias for `EnumVec<bool>`"]]});
