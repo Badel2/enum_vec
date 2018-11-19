@@ -152,9 +152,11 @@ pub unsafe trait EnumLike: Copy {
 // Any one-variant types can be trivially implemented
 unsafe impl EnumLike for () {
     const NUM_VARIANTS: usize = 1;
+    #[inline(always)]
     fn to_discr(self) -> usize {
         0
     }
+    #[inline(always)]
     fn from_discr(_x: usize) -> Self {
         ()
     }
@@ -162,6 +164,7 @@ unsafe impl EnumLike for () {
 
 unsafe impl EnumLike for bool {
     const NUM_VARIANTS: usize = 2;
+    #[inline(always)]
     fn to_discr(self) -> usize {
         //self as usize
         // Just to be sure
@@ -171,6 +174,7 @@ unsafe impl EnumLike for bool {
             0
         }
     }
+    #[inline(always)]
     fn from_discr(x: usize) -> Self {
         x != 0
     }
@@ -180,12 +184,14 @@ unsafe impl EnumLike for bool {
 // 0: Some(false), 1: Some(true), 2: None
 unsafe impl<T: EnumLike> EnumLike for Option<T> {
     const NUM_VARIANTS: usize = 1 + T::NUM_VARIANTS;
+    #[inline(always)]
     fn to_discr(self) -> usize {
         match self {
             None => T::NUM_VARIANTS,
             Some(x) => x.to_discr(),
         }
     }
+    #[inline(always)]
     fn from_discr(x: usize) -> Self {
         match x {
             x if x == T::NUM_VARIANTS => None,
@@ -196,12 +202,14 @@ unsafe impl<T: EnumLike> EnumLike for Option<T> {
 
 unsafe impl<T: EnumLike, S: EnumLike> EnumLike for Result<T, S> {
     const NUM_VARIANTS: usize = T::NUM_VARIANTS + S::NUM_VARIANTS;
+    #[inline(always)]
     fn to_discr(self) -> usize {
         match self {
             Ok(x) => x.to_discr(),
             Err(x) => T::NUM_VARIANTS + x.to_discr(),
         }
     }
+    #[inline(always)]
     fn from_discr(x: usize) -> Self {
         match x {
             x if x < T::NUM_VARIANTS => Ok(T::from_discr(x)),
@@ -212,9 +220,11 @@ unsafe impl<T: EnumLike, S: EnumLike> EnumLike for Result<T, S> {
 
 unsafe impl<T: EnumLike> EnumLike for (T,) {
     const NUM_VARIANTS: usize = T::NUM_VARIANTS;
+    #[inline(always)]
     fn to_discr(self) -> usize {
         self.0.to_discr()
     }
+    #[inline(always)]
     fn from_discr(x: usize) -> Self {
         (T::from_discr(x),)
     }
@@ -331,9 +341,11 @@ tuple_impls! {
 // and [T; 0] into ()
 unsafe impl<T: EnumLike> EnumLike for [T; 0] {
     const NUM_VARIANTS: usize = <()>::NUM_VARIANTS;
+    #[inline(always)]
     fn to_discr(self) -> usize {
         0
     }
+    #[inline(always)]
     fn from_discr(_x: usize) -> Self {
         []
     }
