@@ -15,6 +15,16 @@ pub use enum_like::*;
 // storage: union { Vec<u32>, [usize; 3] }
 // Tag: MSB of num_elements
 
+/// Macro for easy initialization similar to `vec!`:
+///
+/// ```
+/// extern crate enum_vec;
+/// use enum_vec::EnumVec;
+/// use enum_vec::enum_vec;
+///
+/// let ev1 = enum_vec![true, true, false];
+/// let ev2 = enum_vec![true; 16];
+/// ```
 #[macro_export]
 macro_rules! enum_vec {
     ($elem:expr; $n:expr) => ({
